@@ -1,0 +1,271 @@
+const Database = require('better-sqlite3');
+const path = require('path');
+
+const dbPath = path.join(__dirname, '..', 'data', 'weightloss.db');
+const db = new Database(dbPath);
+
+// 启用 WAL 模式，提高并发性能
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+// 创建表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    age INTEGER NOT NULL,
+    height REAL NOT NULL,
+    starting_weight REAL NOT NULL,
+    goal_weight REAL NOT NULL,
+    deadline TEXT NOT NULL,
+    current_phase INTEGER DEFAULT 1,
+    phase_start_date TEXT,
+    phase_end_date TEXT,
+    phase_start_weight REAL,
+    phase_goal_weight REAL,
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS daily_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT UNIQUE NOT NULL,
+    morning_weight REAL,
+    sleep_bedtime TEXT,
+    sleep_waketime TEXT,
+    sleep_interruptions INTEGER DEFAULT 0,
+    sleep_energy INTEGER CHECK(sleep_energy BETWEEN 1 AND 10),
+    breakfast TEXT,
+    lunch TEXT,
+    dinner TEXT,
+    snacks TEXT,
+    breakfast_photo TEXT,
+    lunch_photo TEXT,
+    dinner_photo TEXT,
+    exercise_type TEXT,
+    exercise_duration INTEGER DEFAULT 0,
+    exercise_intensity INTEGER CHECK(exercise_intensity BETWEEN 1 AND 10),
+    exercise_steps INTEGER DEFAULT 0,
+    body_waist TEXT,
+    body_knee TEXT,
+    body_fatigue INTEGER CHECK(body_fatigue BETWEEN 1 AND 10),
+    body_hunger INTEGER CHECK(body_hunger BETWEEN 1 AND 10),
+    body_bowel TEXT,
+    self_diet_score INTEGER CHECK(self_diet_score BETWEEN 1 AND 10),
+    self_exercise_score INTEGER CHECK(self_exercise_score BETWEEN 1 AND 10),
+    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS body_composition (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT UNIQUE NOT NULL,
+    weight REAL,
+    body_fat REAL,
+    muscle_mass REAL,
+    water REAL,
+    bone_mass REAL,
+    bmi REAL,
+    bmr REAL,
+    visceral_fat INTEGER,
+    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS ai_analysis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT UNIQUE NOT NULL,
+    raw_response TEXT,
+    data_summary TEXT,
+    total_goal_json TEXT,
+    phase_goal_json TEXT,
+    judgment TEXT,
+    suggestions TEXT,
+    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_records_date ON daily_records(date DESC);
+  CREATE INDEX IF NOT EXISTS idx_analysis_date ON ai_analysis(date DESC);
+  CREATE INDEX IF NOT EXISTS idx_bodycomp_date ON body_composition(date DESC);
+`);
+
+// ========== Profile ==========
+
+const getProfile = () => {
+  return db.prepare('SELECT * FROM profile WHERE id = 1').get();
+};
+
+const upsertProfile = (profile) => {
+  const existing = getProfile();
+  if (existing) {
+    const stmt = db.prepare(`
+      UPDATE profile SET
+        age = @age, height = @height, starting_weight = @starting_weight,
+        goal_weight = @goal_weight, deadline = @deadline,
+        current_phase = @current_phase, phase_start_date = @phase_start_date,
+        phase_end_date = @phase_end_date, phase_start_weight = @phase_start_weight,
+        phase_goal_weight = @phase_goal_weight,
+        updated_at = datetime('now', 'localtime')
+      WHERE id = 1
+    `);
+    return stmt.run(profile);
+  } else {
+    const stmt = db.prepare(`
+      INSERT INTO profile (id, age, height, starting_weight, goal_weight, deadline,
+        current_phase, phase_start_date, phase_end_date, phase_start_weight, phase_goal_weight)
+      VALUES (1, @age, @height, @starting_weight, @goal_weight, @deadline,
+        @current_phase, @phase_start_date, @phase_end_date, @phase_start_weight, @phase_goal_weight)
+    `);
+    return stmt.run(profile);
+  }
+};
+
+// ========== Daily Records ==========
+
+const getRecordByDate = (date) => {
+  return db.prepare('SELECT * FROM daily_records WHERE date = ?').get(date);
+};
+
+const getRecentRecords = (limit = 30) => {
+  return db.prepare('SELECT * FROM daily_records ORDER BY date DESC LIMIT ?').all(limit);
+};
+
+const upsertRecord = (record) => {
+  const existing = getRecordByDate(record.date);
+  if (existing) {
+    const stmt = db.prepare(`
+      UPDATE daily_records SET
+        morning_weight = @morning_weight, sleep_bedtime = @sleep_bedtime,
+        sleep_waketime = @sleep_waketime, sleep_interruptions = @sleep_interruptions,
+        sleep_energy = @sleep_energy, breakfast = @breakfast, lunch = @lunch,
+        dinner = @dinner, snacks = @snacks, breakfast_photo = @breakfast_photo,
+        lunch_photo = @lunch_photo, dinner_photo = @dinner_photo,
+        exercise_type = @exercise_type, exercise_duration = @exercise_duration,
+        exercise_intensity = @exercise_intensity, exercise_steps = @exercise_steps,
+        body_waist = @body_waist, body_knee = @body_knee,
+        body_fatigue = @body_fatigue, body_hunger = @body_hunger,
+        body_bowel = @body_bowel, self_diet_score = @self_diet_score,
+        self_exercise_score = @self_exercise_score
+      WHERE date = @date
+    `);
+    return stmt.run(record);
+  } else {
+    const stmt = db.prepare(`
+      INSERT INTO daily_records (date, morning_weight, sleep_bedtime, sleep_waketime,
+        sleep_interruptions, sleep_energy, breakfast, lunch, dinner, snacks,
+        breakfast_photo, lunch_photo, dinner_photo, exercise_type, exercise_duration,
+        exercise_intensity, exercise_steps, body_waist, body_knee, body_fatigue,
+        body_hunger, body_bowel, self_diet_score, self_exercise_score)
+      VALUES (@date, @morning_weight, @sleep_bedtime, @sleep_waketime,
+        @sleep_interruptions, @sleep_energy, @breakfast, @lunch, @dinner, @snacks,
+        @breakfast_photo, @lunch_photo, @dinner_photo, @exercise_type, @exercise_duration,
+        @exercise_intensity, @exercise_steps, @body_waist, @body_knee, @body_fatigue,
+        @body_hunger, @body_bowel, @self_diet_score, @self_exercise_score)
+    `);
+    return stmt.run(record);
+  }
+};
+
+const getStreak = () => {
+  const rows = db.prepare('SELECT date FROM daily_records ORDER BY date DESC').all();
+  if (rows.length === 0) return 0;
+
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < rows.length; i++) {
+    const expected = new Date(today);
+    expected.setDate(expected.getDate() - i);
+    const expectedStr = expected.toISOString().split('T')[0];
+
+    if (rows[i].date === expectedStr) {
+      streak++;
+    } else if (i === 0) {
+      // 今天还没打卡，检查昨天
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      if (rows[0].date === yesterdayStr) {
+        streak = 1;
+        // 继续往后数
+        for (let j = 1; j < rows.length; j++) {
+          const exp = new Date(yesterday);
+          exp.setDate(exp.getDate() - j);
+          if (rows[j].date === exp.toISOString().split('T')[0]) {
+            streak++;
+          } else {
+            break;
+          }
+        }
+      }
+      break;
+    } else {
+      break;
+    }
+  }
+  return streak;
+};
+
+// ========== Body Composition ==========
+
+const getBodyCompByDate = (date) => {
+  return db.prepare('SELECT * FROM body_composition WHERE date = ?').get(date);
+};
+
+const upsertBodyComp = (data) => {
+  const existing = getBodyCompByDate(data.date);
+  if (existing) {
+    const stmt = db.prepare(`
+      UPDATE body_composition SET
+        weight = @weight, body_fat = @body_fat, muscle_mass = @muscle_mass,
+        water = @water, bone_mass = @bone_mass, bmi = @bmi, bmr = @bmr,
+        visceral_fat = @visceral_fat
+      WHERE date = @date
+    `);
+    return stmt.run(data);
+  } else {
+    const stmt = db.prepare(`
+      INSERT INTO body_composition (date, weight, body_fat, muscle_mass, water, bone_mass, bmi, bmr, visceral_fat)
+      VALUES (@date, @weight, @body_fat, @muscle_mass, @water, @bone_mass, @bmi, @bmr, @visceral_fat)
+    `);
+    return stmt.run(data);
+  }
+};
+
+// ========== AI Analysis ==========
+
+const getAnalysisByDate = (date) => {
+  return db.prepare('SELECT * FROM ai_analysis WHERE date = ?').get(date);
+};
+
+const upsertAnalysis = (data) => {
+  const existing = getAnalysisByDate(data.date);
+  if (existing) {
+    const stmt = db.prepare(`
+      UPDATE ai_analysis SET
+        raw_response = @raw_response, data_summary = @data_summary,
+        total_goal_json = @total_goal_json, phase_goal_json = @phase_goal_json,
+        judgment = @judgment, suggestions = @suggestions
+      WHERE date = @date
+    `);
+    return stmt.run(data);
+  } else {
+    const stmt = db.prepare(`
+      INSERT INTO ai_analysis (date, raw_response, data_summary, total_goal_json, phase_goal_json, judgment, suggestions)
+      VALUES (@date, @raw_response, @data_summary, @total_goal_json, @phase_goal_json, @judgment, @suggestions)
+    `);
+    return stmt.run(data);
+  }
+};
+
+module.exports = {
+  db,
+  getProfile,
+  upsertProfile,
+  getRecordByDate,
+  getRecentRecords,
+  upsertRecord,
+  getStreak,
+  getBodyCompByDate,
+  upsertBodyComp,
+  getAnalysisByDate,
+  upsertAnalysis,
+};
