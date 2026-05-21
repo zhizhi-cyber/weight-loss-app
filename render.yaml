@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: weight-loss-app
+    env: node
+    region: singapore
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    nodeVersion: 20
+    envVars:
+      - key: NODE_ENV
+        value: production
