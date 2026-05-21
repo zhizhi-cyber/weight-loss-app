@@ -4,50 +4,53 @@ const multer = require('multer');
 const path = require('path');
 const db = require('../db');
 
-// 照片上传配置
-const storage = multer.diskStorage({
-  destination: path.join(__dirname, '..', '..', 'uploads'),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  },
-});
+// 照片上传配置（Vercel 用内存存储，本地用磁盘存储）
+const isVercel = !!process.env.VERCEL;
+
+const storage = isVercel
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: path.join(__dirname, '..', '..', 'uploads'),
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+      },
+    });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif|webp|heic/i;
-    const ok = allowed.test(path.extname(file.originalname));
-    cb(ok ? null : new Error('仅支持图片格式'), ok);
+    cb(allowed.test(path.extname(file.originalname)) ? null : new Error('仅支持图片格式'), true);
   },
 });
 
 // 获取今日记录
-router.get('/today', (req, res) => {
+router.get('/today', async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
-  const record = db.getRecordByDate(today);
-  const analysis = db.getAnalysisByDate(today);
-  res.json({ date: today, record: record || null, analysis: analysis || null });
+  const record = await db.getRecordByDate(today);
+  const analysis = await db.getAnalysisByDate(today);
+  res.json({ date: today, record, analysis });
 });
 
 // 获取指定日期记录
-router.get('/:date', (req, res) => {
-  const record = db.getRecordByDate(req.params.date);
-  const analysis = db.getAnalysisByDate(req.params.date);
-  res.json({ record: record || null, analysis: analysis || null });
+router.get('/:date', async (req, res) => {
+  const record = await db.getRecordByDate(req.params.date);
+  const analysis = await db.getAnalysisByDate(req.params.date);
+  res.json({ record, analysis });
 });
 
 // 获取历史记录列表
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const limit = parseInt(req.query.limit) || 90;
-  const records = db.getRecentRecords(limit);
-  const streak = db.getStreak();
+  const records = await db.getRecentRecords(limit);
+  const streak = await db.getStreak();
   res.json({ records, streak });
 });
 
-// 提交每日打卡（支持照片上传）
+// 提交每日打卡
 router.post(
   '/',
   upload.fields([
@@ -55,7 +58,7 @@ router.post(
     { name: 'lunch_photo', maxCount: 1 },
     { name: 'dinner_photo', maxCount: 1 },
   ]),
-  (req, res) => {
+  async (req, res) => {
     try {
       const body = req.body;
       const date = body.date || new Date().toISOString().split('T')[0];
@@ -87,8 +90,9 @@ router.post(
         self_exercise_score: body.self_exercise_score ? parseInt(body.self_exercise_score) : null,
       };
 
-      db.upsertRecord(record);
-      res.json({ success: true, record: db.getRecordByDate(date) });
+      await db.upsertRecord(record);
+      const saved = await db.getRecordByDate(date);
+      res.json({ success: true, record: saved });
     } catch (err) {
       console.error('保存打卡记录失败:', err);
       res.status(500).json({ error: err.message });
@@ -97,12 +101,12 @@ router.post(
 );
 
 // 体脂秤数据
-router.post('/bodycomp', (req, res) => {
+router.post('/bodycomp', async (req, res) => {
   try {
     const body = req.body;
     const date = body.date || new Date().toISOString().split('T')[0];
 
-    const data = {
+    await db.upsertBodyComp({
       date,
       weight: body.weight ? parseFloat(body.weight) : null,
       body_fat: body.body_fat ? parseFloat(body.body_fat) : null,
@@ -112,9 +116,8 @@ router.post('/bodycomp', (req, res) => {
       bmi: body.bmi ? parseFloat(body.bmi) : null,
       bmr: body.bmr ? parseFloat(body.bmr) : null,
       visceral_fat: body.visceral_fat ? parseInt(body.visceral_fat) : null,
-    };
+    });
 
-    db.upsertBodyComp(data);
     res.json({ success: true });
   } catch (err) {
     console.error('保存体脂数据失败:', err);

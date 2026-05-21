@@ -3,7 +3,6 @@ const router = express.Router();
 const db = require('../db');
 const { buildCoachPrompt } = require('../prompts/coach');
 
-// DeepSeek API 调用
 async function callDeepSeek(systemPrompt, userMessage) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   const baseUrl = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
@@ -38,7 +37,6 @@ async function callDeepSeek(systemPrompt, userMessage) {
   return data.choices[0].message.content;
 }
 
-// 解析 AI 回复为结构化数据
 function parseAIResponse(rawText) {
   const extractSection = (label) => {
     const regex = new RegExp(`【${label}】([\\s\\S]*?)(?=【|$)`, 'i');
@@ -59,18 +57,18 @@ function parseAIResponse(rawText) {
 router.post('/analyze/:date', async (req, res) => {
   try {
     const date = req.params.date;
-    const profile = db.getProfile();
+    const profile = await db.getProfile();
 
     if (!profile) {
       return res.status(400).json({ error: '请先设置个人档案' });
     }
 
-    const record = db.getRecordByDate(date);
+    const record = await db.getRecordByDate(date);
     if (!record) {
       return res.status(400).json({ error: `没有找到 ${date} 的记录` });
     }
 
-    const recentRecords = db.getRecentRecords(14);
+    const recentRecords = await db.getRecentRecords(14);
 
     const { systemPrompt, userMessage } = buildCoachPrompt(profile, record, recentRecords);
 
@@ -80,7 +78,7 @@ router.post('/analyze/:date', async (req, res) => {
 
     const parsed = parseAIResponse(rawResponse);
 
-    db.upsertAnalysis({
+    await db.upsertAnalysis({
       date,
       raw_response: rawResponse,
       data_summary: parsed.data_summary,
@@ -90,7 +88,7 @@ router.post('/analyze/:date', async (req, res) => {
       suggestions: parsed.suggestions,
     });
 
-    const saved = db.getAnalysisByDate(date);
+    const saved = await db.getAnalysisByDate(date);
     res.json({ success: true, analysis: saved });
   } catch (err) {
     console.error('AI 分析失败:', err);
@@ -99,8 +97,8 @@ router.post('/analyze/:date', async (req, res) => {
 });
 
 // 获取某天的分析
-router.get('/:date', (req, res) => {
-  const analysis = db.getAnalysisByDate(req.params.date);
+router.get('/:date', async (req, res) => {
+  const analysis = await db.getAnalysisByDate(req.params.date);
   res.json({ analysis: analysis || null });
 });
 
