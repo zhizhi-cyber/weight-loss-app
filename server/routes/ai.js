@@ -91,8 +91,8 @@ router.post('/analyze/:date', async (req, res) => {
     const saved = await db.getAnalysisByDate(date);
     res.json({ success: true, analysis: saved });
   } catch (err) {
-    console.error('AI 分析失败:', err);
-    res.status(500).json({ error: err.message });
+    console.error('AI 分析失败:', err.message, err.cause || '', err.stack || '');
+    res.status(500).json({ error: err.message, detail: err.cause?.message || String(err) });
   }
 });
 
