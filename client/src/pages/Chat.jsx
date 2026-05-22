@@ -11,12 +11,34 @@ const SUGGESTIONS = [
   '这周趋势怎么样？',
 ];
 
-function toBase64(file) {
+function compressImage(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    // 非图片文件直接返回 base64
+    if (!file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 800, maxH = 800;
+      let w = img.width, h = img.height;
+      if (w > maxW || h > maxH) {
+        if (w > h) { h = Math.round(h * maxW / w); w = maxW; }
+        else { w = Math.round(w * maxH / h); h = maxH; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = () => reject(new Error('图片加载失败'));
+    img.src = URL.createObjectURL(file);
   });
 }
 
@@ -167,8 +189,8 @@ export default function Chat() {
             const file = e.target.files?.[0];
             if (!file) return;
             try {
-              const base64 = await toBase64(file);
-              setImage({ base64, preview: URL.createObjectURL(file) });
+              const compressed = await compressImage(file);
+              setImage({ base64: compressed, preview: compressed });
             } catch { /* ignore */ }
             e.target.value = '';
           }}
