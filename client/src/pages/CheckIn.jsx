@@ -46,7 +46,7 @@ export default function CheckIn({ profile, onProfileUpdate }) {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [lastWeight, setLastWeight] = useState(null);
-  const [mode, setMode] = useState('manual');
+  const [mode, setMode] = useState('smart');
 
   useEffect(() => {
     if (!profile) return;
