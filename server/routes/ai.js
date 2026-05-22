@@ -287,11 +287,11 @@ router.get('/:date', async (req, res) => {
   res.json({ analysis: analysis || null });
 });
 
-// AI 对话：随时问 AI 教练问题
+// AI 对话：随时问 AI 教练问题（支持图片）
 router.post('/chat', async (req, res) => {
   try {
-    const { message, history = [] } = req.body;
-    if (!message) return res.status(400).json({ error: '请输入问题' });
+    const { message, image, history = [] } = req.body;
+    if (!message && !image) return res.status(400).json({ error: '请输入问题或上传图片' });
 
     const profile = await db.getProfile();
     const todayRecord = await db.getRecordByDate(new Date().toISOString().split('T')[0]);
@@ -300,10 +300,11 @@ router.post('/chat', async (req, res) => {
     let contextPrompt = '你是一位顶级身体成长管理教练，帮助用户长期掌控身体。\n';
     if (profile) {
       contextPrompt += `\n## 用户档案
-- 男性，${profile.age}岁，${Math.round(profile.height * 100)}cm
+- 男性，${profile.age}岁，${Math.round(profile.height)}cm
 - 起始体重 ${profile.starting_weight}kg，目标 ${profile.goal_weight}kg
 - 截止日期 ${profile.deadline}
-- 有轻度腰肌劳损史\n`;
+${profile.health_notes ? '- ' + profile.health_notes + '\n' : ''}\
+${profile.life_context ? '- ' + profile.life_context + '\n' : ''}`;
     }
     if (todayRecord) {
       contextPrompt += `\n## 今日数据
@@ -316,12 +317,23 @@ router.post('/chat', async (req, res) => {
     if (recentRecords.length > 0) {
       contextPrompt += `\n最近几天体重趋势：${recentRecords.filter(r => r.morning_weight).slice(0, 7).map(r => `${r.date.slice(5)}:${r.morning_weight}kg`).join('，')}\n`;
     }
-    contextPrompt += '\n规则：回答简洁实用（200字以内），基于用户实际数据。如果用户问"能不能吃"，分析热量和营养并给明确建议。如果用户分享进步，先肯定再给下一步建议。如果用户有疑问，基于科学和数据回答。绝不建议极端节食或每天跑10公里。注意腰部保护。';
+    contextPrompt += '\n规则：回答简洁实用（200字以内），基于用户实际数据。如果用户发来食物照片，分析热量和营养并给出能不能吃、吃多少的建议。如果用户分享进步，先肯定再给下一步建议。绝不建议极端节食或每天跑10公里。注意腰部保护。';
+
+    // 构建 user message，支持图片
+    let userContent;
+    if (image) {
+      userContent = [
+        { type: 'image_url', image_url: { url: image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}` } },
+      ];
+      if (message) userContent.push({ type: 'text', text: message });
+    } else {
+      userContent = message;
+    }
 
     const messages = [
       { role: 'system', content: contextPrompt },
       ...history.slice(-10).map(m => ({ role: m.role, content: m.content })),
-      { role: 'user', content: message },
+      { role: 'user', content: userContent },
     ];
 
     const apiKey = process.env.DEEPSEEK_API_KEY;
