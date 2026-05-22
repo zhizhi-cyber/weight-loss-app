@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { saveProfile, getProfile } from '../api';
+import { useState, useEffect, useRef } from 'react';
+import { saveProfile, getProfile, request } from '../api';
 
 export default function Settings({ profile, onProfileUpdate }) {
   const [form, setForm] = useState({ age: '', height: '', starting_weight: '', goal_weight: '', deadline: '', body_fat: '', health_notes: '', life_context: '', ideal_note: '' });
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     if (profile) {
@@ -92,6 +94,50 @@ export default function Settings({ profile, onProfileUpdate }) {
           {loading ? <span className="btn-loading"><span className="loading-spinner" />保存中</span> : '保存设置'}
         </button>
       </form>
+
+      <div className="settings-section">
+        <div className="settings-section-title">数据管理</div>
+
+        <button type="button" className="btn btn-secondary" style={{ marginBottom: 10 }}
+          onClick={async () => {
+            try {
+              const data = await request('/export');
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `body-management-${new Date().toISOString().split('T')[0]}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              showToast('数据已导出');
+            } catch (err) { showToast('导出失败: ' + err.message, 'error'); }
+          }}>
+          导出数据
+        </button>
+
+        <button type="button" className="btn btn-secondary btn-sm"
+          onClick={() => fileRef.current?.click()} disabled={importing}
+          style={{ width: '100%', marginBottom: 4 }}>
+          {importing ? <span className="btn-loading"><span className="loading-spinner" />导入中</span> : '导入数据'}
+        </button>
+        <input ref={fileRef} type="file" accept=".json" hidden onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setImporting(true);
+          try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            if (!data.profile || !data.records) throw new Error('数据格式不正确');
+            const res = await request('/import', { method: 'POST', body: JSON.stringify(data) });
+            showToast(`已导入 ${res.imported} 条记录，刷新页面即可看到`);
+            setTimeout(() => window.location.reload(), 1500);
+          } catch (err) { showToast('导入失败: ' + err.message, 'error'); }
+          finally { setImporting(false); e.target.value = ''; }
+        }} />
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+          导入将覆盖现有数据，请先导出备份
+        </div>
+      </div>
     </div>
   );
 }
