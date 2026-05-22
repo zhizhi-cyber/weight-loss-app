@@ -23,8 +23,8 @@ async function callDeepSeek(systemPrompt, userMessage) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage },
       ],
-      temperature: 0.7,
-      max_tokens: 800,
+      temperature: 0.5,
+      max_tokens: 1400,
     }),
   });
 

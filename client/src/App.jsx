@@ -6,13 +6,8 @@ import History from './pages/History';
 import { getProfile } from './api';
 
 class ErrorBoundary extends Component {
-  constructor(props) {
-    super(props);
-    this.state = { error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { error };
-  }
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
   render() {
     if (this.state.error) {
       return (
@@ -20,9 +15,7 @@ class ErrorBoundary extends Component {
           <div className="icon">⚠️</div>
           <h3>出了点问题</h3>
           <p style={{ marginBottom: 16 }}>{this.state.error.message}</p>
-          <button className="btn btn-primary btn-sm" onClick={() => window.location.reload()}>
-            刷新页面
-          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => window.location.reload()}>刷新</button>
         </div>
       );
     }
@@ -33,56 +26,24 @@ class ErrorBoundary extends Component {
 export default function App() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [dark, setDark] = useState(() => localStorage.getItem('dark') === '1');
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.body.classList.toggle('dark', dark);
-    localStorage.setItem('dark', dark ? '1' : '0');
-  }, [dark]);
-
-  useEffect(() => {
-    getProfile()
-      .then((data) => {
-        if (data.exists) {
-          setProfile(data);
-        } else {
-          navigate('/checkin');
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    getProfile().then((data) => {
+      if (data.exists) setProfile(data);
+      else navigate('/checkin');
+    }).catch(console.error).finally(() => setLoading(false));
   }, [navigate]);
 
-  if (loading) {
-    return <div className="loading-screen">加载中...</div>;
-  }
+  if (loading) return <div className="loading-screen">Loading...</div>;
 
   return (
     <div className="app">
       <header className="app-header">
-        <h1>减肥陪伴</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {profile && (
-            <span className="header-goal">
-              {profile.starting_weight}kg → {profile.goal_weight}kg
-            </span>
-          )}
-          <button
-            onClick={() => setDark((d) => !d)}
-            style={{
-              background: 'rgba(255,255,255,0.15)',
-              border: 'none',
-              borderRadius: 20,
-              padding: '4px 8px',
-              fontSize: 16,
-              cursor: 'pointer',
-              lineHeight: 1,
-            }}
-          >
-            {dark ? '☀️' : '🌙'}
-          </button>
-        </div>
+        <h1>身体管理</h1>
+        {profile && (
+          <span className="header-goal">{profile.starting_weight} → {profile.goal_weight}kg</span>
+        )}
       </header>
 
       <main className="app-main">
@@ -97,15 +58,15 @@ export default function App() {
 
       <nav className="bottom-nav">
         <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-          <span className="nav-icon">📊</span>
+          <span className="nav-icon">⌂</span>
           <span className="nav-label">首页</span>
         </NavLink>
         <NavLink to="/checkin" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-          <span className="nav-icon">📝</span>
+          <span className="nav-icon">+</span>
           <span className="nav-label">打卡</span>
         </NavLink>
         <NavLink to="/history" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-          <span className="nav-icon">📅</span>
+          <span className="nav-icon">◷</span>
           <span className="nav-label">历史</span>
         </NavLink>
       </nav>
