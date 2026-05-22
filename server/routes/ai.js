@@ -98,10 +98,35 @@ router.post('/analyze/:date', async (req, res) => {
       problems: parsed.problems,
     });
 
+    // 自动检查：如果当前体重已达到或低于阶段目标，自动推进到下一阶段
+    let phaseUpdated = false;
+    const currentWeight = record.morning_weight || profile.starting_weight;
+    const phaseGoal = profile.phase_goal_weight || profile.goal_weight;
+    if (currentWeight <= phaseGoal && currentWeight > profile.goal_weight) {
+      const weeklyRate = 0.45;
+      const nextPhaseStart = new Date().toISOString().split('T')[0];
+      const nextPhaseEndDate = new Date(Date.now() + 30 * 86400000);
+      const nextPhaseEnd = nextPhaseEndDate > new Date(profile.deadline) ? profile.deadline : nextPhaseEndDate.toISOString().split('T')[0];
+      const nextPhaseGoal = Math.max(profile.goal_weight, currentWeight - weeklyRate * 4);
+      await db.upsertProfile({
+        age: profile.age,
+        height: profile.height,
+        starting_weight: profile.starting_weight,
+        goal_weight: profile.goal_weight,
+        deadline: profile.deadline,
+        current_phase: (profile.current_phase || 1) + 1,
+        phase_start_date: nextPhaseStart,
+        phase_end_date: nextPhaseEnd,
+        phase_start_weight: currentWeight,
+        phase_goal_weight: Math.round(nextPhaseGoal * 10) / 10,
+      });
+      phaseUpdated = true;
+    }
+
     const bmr = calcBMR(profile);
     const tdee = calcTDEE(bmr, record.exercise_steps || 0, record.exercise_duration || 0, record.exercise_intensity || 0);
     const saved = await db.getAnalysisByDate(date);
-    res.json({ success: true, analysis: saved, metabolism: { bmr, tdee } });
+    res.json({ success: true, analysis: saved, metabolism: { bmr, tdee }, phaseUpdated });
   } catch (err) {
     console.error('AI 分析失败:', err.message, err.cause || '', err.stack || '');
     res.status(500).json({ error: err.message, detail: err.cause?.message || String(err) });

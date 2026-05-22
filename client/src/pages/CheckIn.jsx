@@ -2,14 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { saveProfile, getTodayRecord, submitCheckIn, generateAnalysis, request, getRecords } from '../api';
 import SmartLog from './SmartLog';
 
-function RatingDots({ value, onChange }) {
+function ScoreInput({ value, onChange, label }) {
   return (
-    <div className="rating">
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-        <button key={n} type="button" className={`rating-dot${value === n ? ' selected' : ''}`}
-          onClick={() => onChange(value === n ? null : n)}>{n}</button>
-      ))}
-      {value && <span className="rating-num">{value}/10</span>}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <input type="number" min="1" max="10" className="form-input" style={{ width: 52, textAlign: 'center', padding: '8px 4px' }}
+        value={value ?? ''} onChange={(e) => { const v = e.target.value; onChange(v ? Math.max(1, Math.min(10, parseInt(v) || 1)) : null); }}
+        placeholder="1-10" />
+      {value && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>{value}/10</span>}
     </div>
   );
 }
@@ -93,13 +92,12 @@ export default function CheckIn({ profile, onProfileUpdate }) {
   }, [profile]);
 
   const calcCompletion = () => {
-    let filled = 0, total = 6;
+    let filled = 0, total = 5;
     if (form.morning_weight !== '') filled++;
     if (form.breakfast || form.lunch || form.dinner) filled++;
     if (form.exercise_type) filled++;
     if (form.exercise_steps !== '' && parseInt(form.exercise_steps) > 0) filled++;
     if (form.sleep_bedtime) filled++;
-    if (form.self_diet_score) filled++;
     return Math.round((filled / total) * 100);
   };
 
@@ -141,8 +139,6 @@ export default function CheckIn({ profile, onProfileUpdate }) {
       if (form.shooting_accuracy !== '') fd.append('shooting_accuracy', form.shooting_accuracy);
       if (form.stress_level) fd.append('stress_level', form.stress_level);
       if (form.water_intake !== '') fd.append('water_intake', form.water_intake);
-      if (form.self_diet_score) fd.append('self_diet_score', form.self_diet_score);
-      if (form.self_exercise_score) fd.append('self_exercise_score', form.self_exercise_score);
       if (photos.breakfast_photo instanceof File) fd.append('breakfast_photo', photos.breakfast_photo);
       if (photos.lunch_photo instanceof File) fd.append('lunch_photo', photos.lunch_photo);
       if (photos.dinner_photo instanceof File) fd.append('dinner_photo', photos.dinner_photo);
@@ -223,7 +219,7 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             </div>
             <div className="form-row" style={{ marginTop: 10 }}>
               <div className="form-group"><label className="form-label">夜醒次数</label><input type="number" min="0" className="form-input" value={form.sleep_interruptions} onChange={(e) => handleFormChange('sleep_interruptions', parseInt(e.target.value) || 0)} /></div>
-              <div className="form-group"><label className="form-label">精神</label><RatingDots value={form.sleep_energy} onChange={(v) => handleFormChange('sleep_energy', v)} /></div>
+              <div className="form-group"><label className="form-label">精神</label><ScoreInput value={form.sleep_energy} onChange={(v) => handleFormChange('sleep_energy', v)} /></div>
             </div>
           </div>
 
@@ -254,7 +250,7 @@ export default function CheckIn({ profile, onProfileUpdate }) {
               <div className="form-group"><label className="form-label">分钟</label><input type="number" min="0" className="form-input" value={form.exercise_duration} onChange={(e) => handleFormChange('exercise_duration', e.target.value)} /></div>
               <div className="form-group"><label className="form-label">步数</label><input type="number" min="0" className="form-input" value={form.exercise_steps} onChange={(e) => handleFormChange('exercise_steps', e.target.value)} /></div>
             </div>
-            <div className="form-group" style={{ marginTop: 10 }}><label className="form-label">强度</label><RatingDots value={form.exercise_intensity} onChange={(v) => handleFormChange('exercise_intensity', v)} /></div>
+            <div className="form-group" style={{ marginTop: 10 }}><label className="form-label">强度</label><ScoreInput value={form.exercise_intensity} onChange={(v) => handleFormChange('exercise_intensity', v)} /></div>
           </div>
 
           {/* Body + Water + Shooting */}
@@ -265,20 +261,13 @@ export default function CheckIn({ profile, onProfileUpdate }) {
               <div className="form-group"><label className="form-label">膝盖</label><input type="text" className="form-input" value={form.body_knee} onChange={(e) => handleFormChange('body_knee', e.target.value)} placeholder="正常/不适" /></div>
             </div>
             <div className="form-group"><label className="form-label">排便</label><input type="text" className="form-input" value={form.body_bowel} onChange={(e) => handleFormChange('body_bowel', e.target.value)} placeholder="正常/便秘/腹泻" /></div>
-            <div className="form-group"><label className="form-label">疲劳感</label><RatingDots value={form.body_fatigue} onChange={(v) => handleFormChange('body_fatigue', v)} /></div>
-            <div className="form-group"><label className="form-label">饥饿感</label><RatingDots value={form.body_hunger} onChange={(v) => handleFormChange('body_hunger', v)} /></div>
+            <div className="form-group"><label className="form-label">疲劳感</label><ScoreInput value={form.body_fatigue} onChange={(v) => handleFormChange('body_fatigue', v)} /></div>
+            <div className="form-group"><label className="form-label">饥饿感</label><ScoreInput value={form.body_hunger} onChange={(v) => handleFormChange('body_hunger', v)} /></div>
             <div className="form-row">
               <div className="form-group"><label className="form-label">饮水量 L</label><input type="number" step="0.1" className="form-input" value={form.water_intake} onChange={(e) => handleFormChange('water_intake', e.target.value)} placeholder="例：1.5" /></div>
               <div className="form-group"><label className="form-label">投篮命中 %</label><input type="number" min="0" max="100" className="form-input" value={form.shooting_accuracy} onChange={(e) => handleFormChange('shooting_accuracy', e.target.value)} placeholder="例：42" /></div>
             </div>
-            <div className="form-group" style={{ marginTop: 10 }}><label className="form-label">压力</label><RatingDots value={form.stress_level} onChange={(v) => handleFormChange('stress_level', v)} /></div>
-          </div>
-
-          {/* Self-rating */}
-          <div className="card">
-            <div className="card-title">自评</div>
-            <div className="form-group"><label className="form-label">饮食控制</label><RatingDots value={form.self_diet_score} onChange={(v) => handleFormChange('self_diet_score', v)} /></div>
-            <div className="form-group"><label className="form-label">运动完成</label><RatingDots value={form.self_exercise_score} onChange={(v) => handleFormChange('self_exercise_score', v)} /></div>
+            <div className="form-group" style={{ marginTop: 10 }}><label className="form-label">压力</label><ScoreInput value={form.stress_level} onChange={(v) => handleFormChange('stress_level', v)} /></div>
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginBottom: 16 }}>

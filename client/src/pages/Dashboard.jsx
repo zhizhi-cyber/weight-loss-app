@@ -33,17 +33,18 @@ function calcProgress(profile) {
 }
 
 function calcProjectedPhases(profile) {
-  // 按每周0.45kg减重速度投影未来阶段
+  // 按每周0.45kg减重速度投影到截止日期
   const phases = [];
   const weeklyRate = 0.45;
   let currentWeight = profile.phase_start_weight || profile.starting_weight;
-  const phaseCount = Math.ceil((currentWeight - profile.goal_weight) / (weeklyRate * 4));
   const today = new Date(); today.setHours(0, 0, 0, 0);
+  const deadlineDate = new Date(profile.deadline); deadlineDate.setHours(0, 0, 0, 0);
   let phaseStart = new Date(profile.phase_start_date); phaseStart.setHours(0, 0, 0, 0);
 
-  for (let i = 1; i <= Math.min(phaseCount, 12); i++) {
+  for (let i = 1; currentWeight > profile.goal_weight && phaseStart < deadlineDate; i++) {
     const daysInPhase = i === 1 ? Math.ceil((new Date(profile.phase_end_date) - phaseStart) / (1000 * 60 * 60 * 24)) : 30;
-    const phaseEnd = new Date(phaseStart.getTime() + daysInPhase * 1000 * 60 * 60 * 24);
+    let phaseEnd = new Date(phaseStart.getTime() + daysInPhase * 1000 * 60 * 60 * 24);
+    if (phaseEnd > deadlineDate) phaseEnd = deadlineDate;
     const phaseTarget = Math.max(profile.goal_weight, currentWeight - weeklyRate * 4);
     phases.push({
       num: i,
@@ -54,7 +55,7 @@ function calcProjectedPhases(profile) {
       isCurrent: i === (profile.current_phase || 1),
     });
     currentWeight = phaseTarget;
-    phaseStart = phaseEnd;
+    phaseStart = new Date(phaseEnd.getTime() + 1000 * 60 * 60 * 24);
   }
   return phases;
 }
@@ -215,12 +216,12 @@ export default function Dashboard({ profile }) {
             <div className="stat-label">步数</div>
           </div>
           <div className="stat-item">
-            <div className="stat-value">{data.record.self_diet_score ?? '—'}</div>
-            <div className="stat-label">饮食自评</div>
+            <div className="stat-value">{data.record.water_intake ? data.record.water_intake + 'L' : '—'}</div>
+            <div className="stat-label">饮水</div>
           </div>
           <div className="stat-item">
-            <div className="stat-value">{data.record.self_exercise_score ?? '—'}</div>
-            <div className="stat-label">运动自评</div>
+            <div className="stat-value">{data.record.sleep_energy ? data.record.sleep_energy + '/10' : '—'}</div>
+            <div className="stat-label">睡眠</div>
           </div>
         </div>
       )}
