@@ -392,8 +392,8 @@ export default function CheckIn({ profile, onProfileUpdate }) {
               <label className="form-label">中途醒来次数</label>
               <input type="number" min="0" className="form-input" value={form.sleep_interruptions} onChange={(e) => handleFormChange('sleep_interruptions', parseInt(e.target.value) || 0)} />
             </div>
-            <div className="form-group">
-              <label className="form-label">醒来精神状态（1-10）</label>
+            <div className="form-group rating-full">
+              <label className="form-label">醒来精神状态</label>
               <RatingDots value={form.sleep_energy} onChange={(v) => handleFormChange('sleep_energy', v)} />
             </div>
           </div>
@@ -471,15 +471,13 @@ export default function CheckIn({ profile, onProfileUpdate }) {
               <input type="text" className="form-input" value={form.body_knee} onChange={(e) => handleFormChange('body_knee', e.target.value)} placeholder="正常/不适..." />
             </div>
           </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">疲劳感（1-10）</label>
-              <RatingDots value={form.body_fatigue} onChange={(v) => handleFormChange('body_fatigue', v)} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">饥饿感（1-10）</label>
-              <RatingDots value={form.body_hunger} onChange={(v) => handleFormChange('body_hunger', v)} />
-            </div>
+          <div className="form-group rating-full">
+            <label className="form-label">疲劳感</label>
+            <RatingDots value={form.body_fatigue} onChange={(v) => handleFormChange('body_fatigue', v)} />
+          </div>
+          <div className="form-group rating-full">
+            <label className="form-label">饥饿感</label>
+            <RatingDots value={form.body_hunger} onChange={(v) => handleFormChange('body_hunger', v)} />
           </div>
           <div className="form-group">
             <label className="form-label">排便</label>

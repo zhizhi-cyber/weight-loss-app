@@ -57,6 +57,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  overflow-x: hidden;
 }
 
 .app-header {
@@ -278,31 +279,41 @@ body {
 /* ========== Rating Stars ========== */
 .rating {
   display: flex;
-  gap: 6px;
+  gap: 2px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .rating-dot {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 2px solid var(--border);
-  background: white;
+  border: 1.5px solid var(--border);
+  background: var(--card);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
   transition: all 0.15s;
+  flex-shrink: 0;
 }
 
-.rating-dot:hover { border-color: var(--primary); }
-.rating-dot.selected { border-color: var(--primary); background: var(--primary-light); }
+.rating-dot:hover { border-color: var(--primary); color: var(--primary-dark); }
+.rating-dot.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark); }
 
 .rating-num {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   margin-left: 4px;
+  white-space: nowrap;
+}
+
+/* 打分项在表单行中占满宽 */
+.form-group.rating-full {
+  grid-column: 1 / -1;
 }
 
 /* ========== Mood Picker ========== */
@@ -530,7 +541,10 @@ body {
 
 /* ========== Responsive ========== */
 @media (max-width: 480px) {
-  .app-main { padding: 12px; padding-bottom: 80px; }
-  .card { padding: 14px; }
+  .app-main { padding: 10px; padding-bottom: 80px; }
+  .card { padding: 12px; }
   .stat-grid { grid-template-columns: 1fr 1fr; }
+  .rating-dot { width: 22px; height: 22px; font-size: 10px; }
+  .rating { gap: 1px; }
+  .form-row { gap: 8px; }
 }
