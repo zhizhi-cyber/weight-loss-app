@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { saveProfile, getTodayRecord, submitCheckIn, generateAnalysis, request } from '../api';
+import { saveProfile, getTodayRecord, submitCheckIn, generateAnalysis, request, getRecords } from '../api';
 
 function RatingDots({ value, onChange }) {
   return (
@@ -112,6 +112,40 @@ export default function CheckIn({ profile, onProfileUpdate }) {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [collapsed, setCollapsed] = useState({});
+  const [lastWeight, setLastWeight] = useState(null);
+
+  // 获取上次体重用于对比
+  useEffect(() => {
+    if (!profile) return;
+    getRecords(14).then((data) => {
+      const records = data.records || [];
+      const today = new Date().toISOString().split('T')[0];
+      const last = records.find((r) => r.date !== today && r.morning_weight);
+      if (last) setLastWeight({ date: last.date, weight: last.morning_weight });
+    }).catch(() => {});
+  }, [profile]);
+
+  // 计算打卡完成度
+  const calcCompletion = () => {
+    let filled = 0, total = 0;
+    if (form.morning_weight !== '') filled++;
+    total++;
+    if (form.sleep_bedtime) filled++;
+    total++;
+    if (form.breakfast) filled++;
+    total++;
+    if (form.lunch) filled++;
+    total++;
+    if (form.dinner) filled++;
+    total++;
+    if (form.exercise_type) filled++;
+    total++;
+    if (form.exercise_duration !== '' && parseInt(form.exercise_duration) > 0) filled++;
+    total++;
+    if (form.self_diet_score) filled++;
+    total++;
+    return Math.round((filled / total) * 100);
+  };
 
   // Load today's record on mount, or load record for selected date
   useEffect(() => {
@@ -291,11 +325,30 @@ export default function CheckIn({ profile, onProfileUpdate }) {
   }
 
   // ---- Check-in form ----
+  const completion = calcCompletion();
+
   return (
     <div>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
 
       <form onSubmit={handleSubmit}>
+        {/* 完成度 */}
+        <div className="card" style={{ padding: '12px 18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: completion > 0 ? 6 : 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>今日打卡进度</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: completion >= 80 ? 'var(--success)' : completion >= 40 ? 'var(--warning)' : 'var(--text-muted)' }}>
+              {completion}%
+            </span>
+          </div>
+          <div className="progress-bar" style={{ height: 6 }}>
+            <div className="progress-bar-fill" style={{
+              width: `${completion}%`,
+              background: completion >= 80 ? 'var(--success)' : completion >= 40 ? 'var(--warning)' : 'var(--primary)',
+              transition: 'width 0.3s ease',
+            }} />
+          </div>
+        </div>
+
         {/* 日期 */}
         <div className="card">
           <div className="card-title">日期</div>
@@ -308,6 +361,18 @@ export default function CheckIn({ profile, onProfileUpdate }) {
           <div className="form-row">
             <input type="number" step="0.1" className="form-input" value={form.morning_weight} onChange={(e) => handleFormChange('morning_weight', e.target.value)} placeholder="kg" />
           </div>
+          {lastWeight && form.morning_weight && parseFloat(form.morning_weight) > 0 && (
+            <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)' }}>
+              上次（{lastWeight.date}）{lastWeight.weight}kg
+              <span style={{
+                fontWeight: 600,
+                marginLeft: 8,
+                color: parseFloat(form.morning_weight) < lastWeight.weight ? 'var(--success)' : parseFloat(form.morning_weight) > lastWeight.weight ? 'var(--danger)' : 'var(--text-muted)',
+              }}>
+                {parseFloat(form.morning_weight) < lastWeight.weight ? `↓ ${(lastWeight.weight - parseFloat(form.morning_weight)).toFixed(1)}kg` : parseFloat(form.morning_weight) > lastWeight.weight ? `↑ ${(parseFloat(form.morning_weight) - lastWeight.weight).toFixed(1)}kg` : '持平'}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 睡眠 */}
@@ -340,6 +405,26 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             <div className="form-group" key={meal}>
               <label className="form-label">{meal === 'breakfast' ? '早餐' : meal === 'lunch' ? '午餐' : '晚餐'}</label>
               <textarea className="form-textarea" value={form[meal]} onChange={(e) => handleFormChange(meal, e.target.value)} placeholder="吃了什么..." rows={2} />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                {(meal === 'breakfast' ? ['鸡蛋+牛奶', '燕麦+鸡蛋', '全麦面包+蛋', '无糖酸奶+坚果'] : meal === 'lunch' ? ['鸡胸肉沙拉', '小炒牛肉+少饭', '三文鱼+西兰花', '卤牛肉+青菜'] : ['鸡胸肉', '关东煮(萝卜海带)', '茶叶蛋+豆腐', '无糖茶']).map((hint) => (
+                  <button
+                    key={hint}
+                    type="button"
+                    style={{
+                      fontSize: 11,
+                      padding: '3px 8px',
+                      borderRadius: 12,
+                      border: '1px solid var(--border)',
+                      background: form[meal] === hint ? 'var(--primary-light)' : '#f8fafc',
+                      color: form[meal] === hint ? 'var(--primary-dark)' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => handleFormChange(meal, form[meal] === hint ? '' : hint)}
+                  >
+                    {hint}
+                  </button>
+                ))}
+              </div>
               <div style={{ marginTop: 6 }}>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>照片（可选）</span>
                 <PhotoUpload photo={photos[`${meal}_photo`]} onChange={(f) => setPhotos((p) => ({ ...p, [`${meal}_photo`]: f }))} />

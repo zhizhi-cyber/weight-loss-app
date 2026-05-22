@@ -98,13 +98,23 @@ export default function Dashboard({ profile }) {
 
   return (
     <div>
-      {/* 连胜 + 剩余天数 */}
+      {/* 连胜 + 剩余天数 + 里程碑 */}
       <div style={{ textAlign: 'center', marginBottom: 14, display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
         {streak > 0 && <span className="streak-badge">🔥 连续打卡 {streak} 天</span>}
         <span className="streak-badge" style={{ background: '#dbeafe', color: '#1e40af' }}>
           ⏱ 还剩 {p.remainingDays} 天
         </span>
       </div>
+
+      {streak > 0 && streak % 7 === 0 && (
+        <div className="card" style={{ textAlign: 'center', background: 'linear-gradient(135deg, #fef3c7, #fde68a)', border: '1px solid #fcd34d' }}>
+          <div style={{ fontSize: 32, marginBottom: 4 }}>🎉</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#92400e' }}>里程碑达成！</div>
+          <div style={{ fontSize: 13, color: '#a16207', marginTop: 4 }}>
+            你已经坚持了 {streak} 天！继续保持，下一站在 {streak + 7} 天。
+          </div>
+        </div>
+      )}
 
       {/* 今日体重 */}
       <div className="card">

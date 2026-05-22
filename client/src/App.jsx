@@ -33,7 +33,13 @@ class ErrorBoundary extends Component {
 export default function App() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dark, setDark] = useState(() => localStorage.getItem('dark') === '1');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.body.classList.toggle('dark', dark);
+    localStorage.setItem('dark', dark ? '1' : '0');
+  }, [dark]);
 
   useEffect(() => {
     getProfile()
@@ -56,11 +62,27 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>减肥陪伴</h1>
-        {profile && (
-          <span className="header-goal">
-            {profile.starting_weight}kg → {profile.goal_weight}kg
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {profile && (
+            <span className="header-goal">
+              {profile.starting_weight}kg → {profile.goal_weight}kg
+            </span>
+          )}
+          <button
+            onClick={() => setDark((d) => !d)}
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              border: 'none',
+              borderRadius: 20,
+              padding: '4px 8px',
+              fontSize: 16,
+              cursor: 'pointer',
+              lineHeight: 1,
+            }}
+          >
+            {dark ? '☀️' : '🌙'}
+          </button>
+        </div>
       </header>
 
       <main className="app-main">

@@ -13,9 +13,31 @@
   --text: #1e293b;
   --text-muted: #64748b;
   --border: #e2e8f0;
+  --stat-bg: #f8fafc;
+  --tag-neutral-bg: #f1f5f9;
+  --tag-neutral-text: #475569;
   --radius: 12px;
   --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
   --shadow-lg: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+}
+
+body.dark {
+  --primary: #14b8a6;
+  --primary-dark: #0d9488;
+  --primary-light: #134e4a;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --success: #4ade80;
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  --stat-bg: #1e293b;
+  --tag-neutral-bg: #334155;
+  --tag-neutral-text: #cbd5e1;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-lg: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
 }
 
 body {
@@ -24,6 +46,7 @@ body {
   color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.3s, color 0.3s;
 }
 
 /* ========== App Layout ========== */
@@ -157,7 +180,7 @@ body {
 }
 
 .stat-item {
-  background: #f8fafc;
+  background: var(--stat-bg);
   border-radius: 8px;
   padding: 12px;
   text-align: center;
@@ -481,7 +504,7 @@ body {
 
 .deviation-tag.good { background: #dcfce7; color: #166534; }
 .deviation-tag.bad { background: #fef2f2; color: #991b1b; }
-.deviation-tag.neutral { background: #f1f5f9; color: #475569; }
+.deviation-tag.neutral { background: var(--tag-neutral-bg); color: var(--tag-neutral-text); }
 
 /* ========== Toast ========== */
 .toast {
