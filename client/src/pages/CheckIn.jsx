@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { saveProfile, getTodayRecord, submitCheckIn, generateAnalysis, request, getRecords } from '../api';
+import SmartLog from './SmartLog';
 
 function RatingDots({ value, onChange }) {
   return (
@@ -113,6 +114,8 @@ export default function CheckIn({ profile, onProfileUpdate }) {
   const [toast, setToast] = useState(null);
   const [collapsed, setCollapsed] = useState({});
   const [lastWeight, setLastWeight] = useState(null);
+  const [mode, setMode] = useState('manual'); // 'manual' | 'smart'
+  const [smartData, setSmartData] = useState(null);
 
   // 获取上次体重用于对比
   useEffect(() => {
@@ -331,6 +334,33 @@ export default function CheckIn({ profile, onProfileUpdate }) {
     <div>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
 
+      {/* 模式切换 */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <button
+          type="button"
+          className={`btn btn-sm ${mode === 'manual' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setMode('manual')}
+        >
+          手动录入
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm ${mode === 'smart' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setMode('smart')}
+        >
+          AI 智能录入
+        </button>
+      </div>
+
+      {mode === 'smart' && (
+        <SmartLog onFillForm={(data) => {
+          setForm((prev) => ({ ...prev, ...data }));
+          setMode('manual');
+          setSmartData(data);
+        }} />
+      )}
+
+      {mode === 'manual' && (
       <form onSubmit={handleSubmit}>
         {/* 完成度 */}
         <div className="card" style={{ padding: '12px 18px' }}>
@@ -501,6 +531,7 @@ export default function CheckIn({ profile, onProfileUpdate }) {
           {loading ? <span className="btn-loading"><span className="loading-spinner" />提交中...</span> : '保存打卡'}
         </button>
       </form>
+      )}
     </div>
   );
 }
