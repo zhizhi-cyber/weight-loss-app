@@ -1,7 +1,7 @@
 const BASE = '/api';
 
 // 通用请求
-async function request(url, options = {}) {
+export async function request(url, options = {}) {
   const res = await fetch(`${BASE}${url}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,

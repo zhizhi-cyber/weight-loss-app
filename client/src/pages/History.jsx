@@ -56,14 +56,13 @@ export default function History({ profile }) {
   if (profile && withWeight.length > 0) {
     const start = profile.starting_weight;
     const goal = profile.goal_weight;
-    const firstDate = new Date(withWeight[0].date);
-    const lastDate = new Date(withWeight[withWeight.length - 1].date);
-    const totalDays = Math.ceil((lastDate - firstDate) / (1000 * 60 * 60 * 24)) || 1;
-    const dailyDrop = (start - goal) / ((new Date(profile.deadline) - new Date(profile.phase_start_date)) / (1000 * 60 * 60 * 24));
+    const journeyStart = new Date(profile.phase_start_date);
+    const journeyDeadline = new Date(profile.deadline);
+    const journeyDays = Math.max(1, Math.ceil((journeyDeadline - journeyStart) / (1000 * 60 * 60 * 24)));
+    const dailyDrop = (start - goal) / journeyDays;
 
     for (let i = 0; i < withWeight.length; i++) {
-      const d = new Date(withWeight[i].date);
-      const daysFromStart = Math.ceil((d - new Date(profile.phase_start_date)) / (1000 * 60 * 60 * 24));
+      const daysFromStart = Math.ceil((new Date(withWeight[i].date) - journeyStart) / (1000 * 60 * 60 * 24));
       targetLine.push(start - dailyDrop * Math.max(0, daysFromStart));
     }
   }

@@ -1,9 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Component } from 'react';
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import CheckIn from './pages/CheckIn';
 import History from './pages/History';
 import { getProfile } from './api';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="empty-state" style={{ paddingTop: 80 }}>
+          <div className="icon">⚠️</div>
+          <h3>出了点问题</h3>
+          <p style={{ marginBottom: 16 }}>{this.state.error.message}</p>
+          <button className="btn btn-primary btn-sm" onClick={() => window.location.reload()}>
+            刷新页面
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [profile, setProfile] = useState(null);
@@ -21,7 +46,7 @@ export default function App() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [navigate]);
 
   if (loading) {
     return <div className="loading-screen">加载中...</div>;
@@ -39,11 +64,13 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        <Routes>
-          <Route path="/" element={<Dashboard profile={profile} />} />
-          <Route path="/checkin" element={<CheckIn profile={profile} onProfileUpdate={setProfile} />} />
-          <Route path="/history" element={<History profile={profile} />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Dashboard profile={profile} />} />
+            <Route path="/checkin" element={<CheckIn profile={profile} onProfileUpdate={setProfile} />} />
+            <Route path="/history" element={<History profile={profile} />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
 
       <nav className="bottom-nav">

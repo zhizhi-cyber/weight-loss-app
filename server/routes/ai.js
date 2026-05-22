@@ -46,8 +46,8 @@ function parseAIResponse(rawText) {
 
   return {
     data_summary: extractSection('数据总结'),
-    total_goal_json: extractSection('总目标偏离度'),
-    phase_goal_json: extractSection('阶段目标偏离度'),
+    total_goal_json: extractSection('总目标进度'),
+    phase_goal_json: extractSection('阶段目标进度'),
     judgment: extractSection('问题判断'),
     suggestions: extractSection('明日建议'),
   };

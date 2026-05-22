@@ -57,7 +57,7 @@ export default function Dashboard({ profile }) {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
-  useEffect(() => { getRecords(90).then((d) => setStreak(d.streak)).catch(() => {}); }, []);
+  useEffect(() => { if (profile) getRecords(90).then((d) => setStreak(d.streak)).catch(() => {}); }, [profile]);
 
   const handleGenerateAI = async () => {
     if (!data?.date) return;

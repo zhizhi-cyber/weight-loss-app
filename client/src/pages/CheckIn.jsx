@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getProfile, saveProfile, getTodayRecord, submitCheckIn } from '../api';
+import { saveProfile, getTodayRecord, submitCheckIn, generateAnalysis, request } from '../api';
 
 function RatingDots({ value, onChange }) {
   return (
@@ -9,7 +9,7 @@ function RatingDots({ value, onChange }) {
           key={n}
           type="button"
           className={`rating-dot${value === n ? ' selected' : ''}`}
-          onClick={() => onChange(onChange ? n : undefined)}
+          onClick={() => onChange(value === n ? null : n)}
         >
           {n}
         </button>
@@ -56,6 +56,19 @@ function PhotoUpload({ photo, onChange }) {
   );
 }
 
+function CollapsibleCard({ title, section, collapsed, onToggle, children }) {
+  const isCollapsed = collapsed[section];
+  return (
+    <div className="card">
+      <div className="card-title" onClick={() => onToggle(section)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+        <span style={{ marginRight: 6 }}>{isCollapsed ? '▸' : '▾'}</span>
+        {title}
+      </div>
+      {!isCollapsed && children}
+    </div>
+  );
+}
+
 export default function CheckIn({ profile, onProfileUpdate }) {
   // ---- Setup form state ----
   const [setup, setSetup] = useState({
@@ -98,16 +111,21 @@ export default function CheckIn({ profile, onProfileUpdate }) {
 
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [collapsed, setCollapsed] = useState({});
 
-  // Load today's record on mount
+  // Load today's record on mount, or load record for selected date
   useEffect(() => {
     if (!profile) return;
-    getTodayRecord()
+    const loadRecord = form.date === new Date().toISOString().split('T')[0]
+      ? getTodayRecord().then((d) => ({ record: d.record }))
+      : request(`/records/${form.date}`).then((d) => ({ record: d.record }));
+
+    loadRecord
       .then((data) => {
         if (data.record) {
           const r = data.record;
-          setForm({
-            date: data.date,
+          setForm((prev) => ({
+            ...prev,
             morning_weight: r.morning_weight ?? '',
             sleep_bedtime: r.sleep_bedtime ?? '',
             sleep_waketime: r.sleep_waketime ?? '',
@@ -128,7 +146,7 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             body_bowel: r.body_bowel ?? '',
             self_diet_score: r.self_diet_score ?? null,
             self_exercise_score: r.self_exercise_score ?? null,
-          });
+          }));
           if (r.breakfast_photo || r.lunch_photo || r.dinner_photo) {
             setPhotos({
               breakfast_photo: r.breakfast_photo || null,
@@ -136,10 +154,27 @@ export default function CheckIn({ profile, onProfileUpdate }) {
               dinner_photo: r.dinner_photo || null,
             });
           }
+        } else {
+          // Reset form for new date
+          setForm((prev) => ({
+            ...prev,
+            morning_weight: '', sleep_bedtime: '', sleep_waketime: '',
+            sleep_interruptions: 0, sleep_energy: null,
+            breakfast: '', lunch: '', dinner: '', snacks: '',
+            exercise_type: '', exercise_duration: '', exercise_intensity: null,
+            exercise_steps: '', body_waist: '', body_knee: '',
+            body_fatigue: null, body_hunger: null, body_bowel: '',
+            self_diet_score: null, self_exercise_score: null,
+          }));
+          setPhotos({ breakfast_photo: null, lunch_photo: null, dinner_photo: null });
         }
       })
       .catch(console.error);
-  }, [profile]);
+  }, [profile, form.date]);
+
+  const toggleSection = (section) => {
+    setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -205,7 +240,15 @@ export default function CheckIn({ profile, onProfileUpdate }) {
       if (photos.dinner_photo instanceof File) fd.append('dinner_photo', photos.dinner_photo);
 
       await submitCheckIn(fd);
-      showToast('打卡成功！');
+      showToast('打卡成功！正在生成 AI 分析...');
+
+      // 自动生成 AI 分析
+      try {
+        await generateAnalysis(form.date);
+        showToast('AI 教练分析已更新！');
+      } catch {
+        showToast('打卡成功（AI 分析生成失败，可稍后重试）');
+      }
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -268,8 +311,7 @@ export default function CheckIn({ profile, onProfileUpdate }) {
         </div>
 
         {/* 睡眠 */}
-        <div className="card">
-          <div className="card-title">睡眠</div>
+        <CollapsibleCard title="睡眠" section="sleep" collapsed={collapsed} onToggle={toggleSection}>
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">入睡时间</label>
@@ -290,11 +332,10 @@ export default function CheckIn({ profile, onProfileUpdate }) {
               <RatingDots value={form.sleep_energy} onChange={(v) => handleFormChange('sleep_energy', v)} />
             </div>
           </div>
-        </div>
+        </CollapsibleCard>
 
         {/* 饮食 */}
-        <div className="card">
-          <div className="card-title">饮食</div>
+        <CollapsibleCard title="饮食" section="meals" collapsed={collapsed} onToggle={toggleSection}>
           {['breakfast', 'lunch', 'dinner'].map((meal) => (
             <div className="form-group" key={meal}>
               <label className="form-label">{meal === 'breakfast' ? '早餐' : meal === 'lunch' ? '午餐' : '晚餐'}</label>
@@ -309,11 +350,10 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             <label className="form-label">加餐/零食</label>
             <input type="text" className="form-input" value={form.snacks} onChange={(e) => handleFormChange('snacks', e.target.value)} placeholder="吃了什么..." />
           </div>
-        </div>
+        </CollapsibleCard>
 
         {/* 运动 */}
-        <div className="card">
-          <div className="card-title">运动</div>
+        <CollapsibleCard title="运动" section="exercise" collapsed={collapsed} onToggle={toggleSection}>
           <div className="form-group">
             <label className="form-label">运动类型</label>
             <input type="text" className="form-input" value={form.exercise_type} onChange={(e) => handleFormChange('exercise_type', e.target.value)} placeholder="跑步、游泳、力量训练..." />
@@ -332,11 +372,10 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             <label className="form-label">运动强度（1-10）</label>
             <RatingDots value={form.exercise_intensity} onChange={(v) => handleFormChange('exercise_intensity', v)} />
           </div>
-        </div>
+        </CollapsibleCard>
 
         {/* 身体状态 */}
-        <div className="card">
-          <div className="card-title">身体状态</div>
+        <CollapsibleCard title="身体状态" section="body" collapsed={collapsed} onToggle={toggleSection}>
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">腰围</label>
@@ -361,11 +400,10 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             <label className="form-label">排便</label>
             <input type="text" className="form-input" value={form.body_bowel} onChange={(e) => handleFormChange('body_bowel', e.target.value)} placeholder="正常/便秘/腹泻..." />
           </div>
-        </div>
+        </CollapsibleCard>
 
         {/* 自我评价 */}
-        <div className="card">
-          <div className="card-title">今日自评</div>
+        <CollapsibleCard title="今日自评" section="self" collapsed={collapsed} onToggle={toggleSection}>
           <div className="form-group">
             <label className="form-label">饮食控制（1-10）</label>
             <RatingDots value={form.self_diet_score} onChange={(v) => handleFormChange('self_diet_score', v)} />
@@ -374,7 +412,7 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             <label className="form-label">运动完成（1-10）</label>
             <RatingDots value={form.self_exercise_score} onChange={(v) => handleFormChange('self_exercise_score', v)} />
           </div>
-        </div>
+        </CollapsibleCard>
 
         <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginBottom: 16 }}>
           {loading ? <span className="btn-loading"><span className="loading-spinner" />提交中...</span> : '保存打卡'}
