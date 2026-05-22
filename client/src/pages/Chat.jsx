@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { request } from '../api';
 
+const STORAGE_KEY = 'chat_messages';
 const SUGGESTIONS = [
   '今天这个能不能吃？',
   '我多走了几步怎么算？',
@@ -19,11 +20,27 @@ function toBase64(file) {
   });
 }
 
+function loadMessages() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch { /* corrupted data */ }
+  return [];
+}
+
+function saveMessages(msgs) {
+  try {
+    // 只保留最近 50 条，image blob URL 刷新后失效所以清掉
+    const toSave = msgs.slice(-50).map(m => ({ ...m, image: undefined }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch { /* quota exceeded, ignore */ }
+}
+
 export default function Chat() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(loadMessages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [image, setImage] = useState(null);        // { base64, preview }
+  const [image, setImage] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
@@ -40,7 +57,9 @@ export default function Chat() {
     const currentImage = image;
     const timeStr = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     const userMsg = { role: 'user', content: msg || '📷', time: timeStr, image: currentImage?.preview };
-    setMessages(prev => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    saveMessages(newMessages);
     setInput('');
     setImage(null);
     setLoading(true);
@@ -51,22 +70,31 @@ export default function Chat() {
         method: 'POST',
         body: JSON.stringify({ message: msg || undefined, image: currentImage?.base64 || undefined, history }),
       });
-      setMessages(prev => [...prev, {
+      const withReply = [...newMessages, {
         role: 'assistant',
         content: data.reply,
         time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-      }]);
+      }];
+      setMessages(withReply);
+      saveMessages(withReply);
     } catch (err) {
-      setMessages(prev => [...prev, {
+      const withErr = [...newMessages, {
         role: 'assistant',
         content: '抱歉，出了点问题：' + err.message,
         time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-      }]);
+      }];
+      setMessages(withErr);
+      saveMessages(withErr);
     } finally { setLoading(false); }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   return (
@@ -79,6 +107,12 @@ export default function Chat() {
               <button key={s} className="chat-suggestion-chip" onClick={() => send(s)}>{s}</button>
             ))}
           </div>
+        </div>
+      )}
+
+      {messages.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <button className="btn btn-secondary btn-sm" onClick={clearChat} style={{ fontSize: 11, padding: '4px 12px' }}>清除对话</button>
         </div>
       )}
 
@@ -123,7 +157,7 @@ export default function Chat() {
             e.target.value = '';
           }}
         />
-        <button className="chat-attach-btn" onClick={() => fileRef.current?.click()} disabled={loading} title="拍照/上传图片">
+        <button className="chat-attach-btn" onClick={() => fileRef.current?.click()} disabled={loading} title="上传图片">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="6" width="20" height="15" rx="3" />
             <circle cx="8.5" cy="12.5" r="2.5" />
