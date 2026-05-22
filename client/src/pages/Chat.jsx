@@ -112,7 +112,6 @@ export default function Chat() {
           type="file"
           ref={fileRef}
           accept="image/*"
-          capture="environment"
           hidden
           onChange={async (e) => {
             const file = e.target.files?.[0];

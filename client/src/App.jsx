@@ -28,6 +28,7 @@ class ErrorBoundary extends Component {
 export default function App() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,6 +37,17 @@ export default function App() {
       else navigate('/checkin');
     }).catch(console.error).finally(() => setLoading(false));
   }, [navigate]);
+
+  // 检测移动端键盘弹起，隐藏底部导航
+  useEffect(() => {
+    if (!window.visualViewport) return;
+    const onResize = () => {
+      const gap = window.innerHeight - window.visualViewport.height;
+      setKeyboardOpen(gap > 80);
+    };
+    window.visualViewport.addEventListener('resize', onResize);
+    return () => window.visualViewport.removeEventListener('resize', onResize);
+  }, []);
 
   if (loading) return <div className="loading-screen">Loading...</div>;
 
@@ -75,7 +87,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
 
-      <nav className="bottom-nav">
+      <nav className={`bottom-nav${keyboardOpen ? ' nav-hidden' : ''}`}>
         <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
           <span className="nav-icon">⌂</span>
           <span className="nav-label">首页</span>
