@@ -85,13 +85,22 @@ export default function Dashboard({ profile }) {
   const [loading, setLoading] = useState(true);
   const [metabolism, setMetabolism] = useState(null);
   const [selectedPhase, setSelectedPhase] = useState(null);
+  const [recentWeights, setRecentWeights] = useState([]);
 
   const loadData = useCallback(() => {
     getTodayRecord().then((d) => { setData(d); setAnalysis(d.analysis); }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
-  useEffect(() => { if (profile) getRecords(90).then((d) => setStreak(d.streak)).catch(() => {}); }, [profile]);
+  useEffect(() => {
+    if (profile) {
+      getRecords(14).then((d) => {
+        setStreak(d.streak);
+        const withWt = (d.records || []).filter(r => r.morning_weight).slice(0, 7).reverse();
+        setRecentWeights(withWt);
+      }).catch(() => {});
+    }
+  }, [profile]);
 
   const handleGenerateAI = async () => {
     if (!data?.date) return;
@@ -146,6 +155,24 @@ export default function Dashboard({ profile }) {
         {todayWeight ? (
           <>
             <div className="hero-number">{todayWeight}<span className="hero-unit"> kg</span></div>
+            {recentWeights.length >= 2 && (
+              <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center' }}>
+                {recentWeights.map((r, i) => {
+                  const prev = recentWeights[i + 1];
+                  const diff = prev ? r.morning_weight - prev.morning_weight : 0;
+                  return (
+                    <div key={r.date} style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: i === recentWeights.length - 1 ? 'var(--text)' : 'var(--text-tertiary)' }}>
+                        {r.morning_weight}
+                      </div>
+                      <div style={{ fontSize: 9, color: diff > 0.3 ? 'var(--danger)' : diff < -0.3 ? 'var(--success)' : 'var(--text-tertiary)' }}>
+                        {i === recentWeights.length - 1 ? '今天' : r.date.slice(5)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center', gap: 8 }}>
               {deviation !== null && (
                 <span className={`deviation-tag ${Math.abs(deviation) < 0.5 ? 'neutral' : deviation > 0 ? 'bad' : 'good'}`}>
@@ -173,7 +200,7 @@ export default function Dashboard({ profile }) {
               总目标 {p.goal}kg
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-              {p.remainingDays}天 · 每日{(p.dailyTarget * 1000).toFixed(0)}g
+              {p.remainingDays}天 · 每日{isNaN(p.dailyTarget) ? '—' : (p.dailyTarget * 1000).toFixed(0) + 'g'}
             </div>
           </div>
 

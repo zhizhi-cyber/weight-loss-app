@@ -1,7 +1,6 @@
-function calcBMR(profile) {
+function calcBMR(weight, heightCm, age) {
   // Mifflin-St Jeor: 男性 10*kg + 6.25*cm - 5*age + 5
-  const h = Math.round(profile.height * 100);
-  return Math.round(10 * profile.starting_weight + 6.25 * h - 5 * profile.age + 5);
+  return Math.round(10 * weight + 6.25 * heightCm - 5 * age + 5);
 }
 
 function calcTDEE(bmr, steps, exerciseMin, intensity) {
@@ -13,7 +12,8 @@ function calcTDEE(bmr, steps, exerciseMin, intensity) {
 }
 
 function buildCoachPrompt(profile, todayRecord, recentRecords) {
-  const bmr = calcBMR(profile);
+  const currentWeight = todayRecord.morning_weight || profile.starting_weight;
+  const bmr = calcBMR(currentWeight, Math.round(profile.height), profile.age);
   const tdee = calcTDEE(bmr, todayRecord.exercise_steps || 0, todayRecord.exercise_duration || 0, todayRecord.exercise_intensity || 0);
   const startWeight = profile.starting_weight;
   const goalWeight = profile.goal_weight;
@@ -26,7 +26,6 @@ function buildCoachPrompt(profile, todayRecord, recentRecords) {
   const dailyTarget = totalToLose / totalDays;
   const daysPassed = totalDays - remainingDays;
   const todayTargetWeight = startWeight - (dailyTarget * daysPassed);
-  const currentWeight = todayRecord.morning_weight || startWeight;
   const totalLost = startWeight - currentWeight;
   const totalProgress = totalToLose > 0 ? (totalLost / totalToLose) * 100 : 0;
   const totalDeviation = currentWeight - todayTargetWeight;
@@ -66,12 +65,12 @@ function buildCoachPrompt(profile, todayRecord, recentRecords) {
   const systemPrompt = `你是一位顶级身体成长管理教练。你的身份不只是"减肥顾问"，而是一个长期陪伴用户成长的身体管理系统核心。
 
 ## 用户档案
-- 男性，${profile.age}岁，${Math.round(profile.height * 100)}cm
-- 当前体重约${currentWeight}kg，体脂约${profile.body_fat || '?'}%
-- 有轻度腰肌劳损史、曾有轻度脂肪肝
-- 工作忙，有婴儿需夜间照顾，睡眠常被打断
+- 男性，${profile.age}岁，${Math.round(profile.height)}cm
+- 当前体重约${currentWeight}kg${profile.body_fat ? '，体脂约' + profile.body_fat + '%' : ''}
+${profile.health_notes ? '- ' + profile.health_notes + '\n' : ''}\
+${profile.life_context ? '- ' + profile.life_context + '\n' : ''}\
 - 总目标：${goalWeight}kg（${profile.deadline}），共减${totalToLose.toFixed(1)}kg
-- 更真实理想：85-90kg、15-18%体脂、体型更强壮
+${profile.ideal_note ? '- ' + profile.ideal_note + '\n' : ''}\
 - 用户喜欢真实、可执行、不极端的方案
 - 用户会毫无保留记录真实饮食（包括垃圾食品、暴食）
 

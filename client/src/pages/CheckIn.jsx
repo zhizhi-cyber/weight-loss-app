@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { saveProfile, getTodayRecord, submitCheckIn, generateAnalysis, request, getRecords } from '../api';
+import { saveProfile, getTodayRecord, submitCheckIn, generateAnalysis, request, getRecords, deleteRecord } from '../api';
 import SmartLog from './SmartLog';
 
 function ScoreInput({ value, onChange, label }) {
@@ -47,6 +47,9 @@ export default function CheckIn({ profile, onProfileUpdate }) {
   const [toast, setToast] = useState(null);
   const [lastWeight, setLastWeight] = useState(null);
   const [mode, setMode] = useState('smart');
+  const [errors, setErrors] = useState({});
+  const [hasExisting, setHasExisting] = useState(false);
+  const [smogFilled, setSmogFilled] = useState(null); // SmartLog 填充预览
 
   useEffect(() => {
     if (!profile) return;
@@ -55,6 +58,7 @@ export default function CheckIn({ profile, onProfileUpdate }) {
       : request(`/records/${form.date}`).then((d) => ({ record: d.record }));
     loadRecord.then((data) => {
       const r = data.record;
+      setHasExisting(!!r);
       if (r) {
         setForm((prev) => ({
           ...prev, morning_weight: r.morning_weight ?? '', sleep_bedtime: r.sleep_bedtime ?? '', sleep_waketime: r.sleep_waketime ?? '',
@@ -77,9 +81,24 @@ export default function CheckIn({ profile, onProfileUpdate }) {
           shooting_accuracy: '', stress_level: null, water_intake: '', self_diet_score: null, self_exercise_score: null,
         }));
         setPhotos({ breakfast_photo: null, lunch_photo: null, dinner_photo: null });
+        setErrors({});
       }
     }).catch(console.error);
   }, [profile, form.date]);
+
+  const validate = () => {
+    const e = {};
+    if (!form.morning_weight) e.morning_weight = '必填';
+    if (!form.breakfast && !form.lunch && !form.dinner) e.diet = '至少记录一餐';
+    if (!form.exercise_type) e.exercise_type = '必填';
+    if (!form.sleep_bedtime) e.sleep_bedtime = '必填';
+    setErrors(e);
+    if (Object.keys(e).length > 0) {
+      const first = document.querySelector('.field-error');
+      first?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return Object.keys(e).length === 0;
+  };
 
   useEffect(() => {
     if (!profile) return;
@@ -113,8 +132,27 @@ export default function CheckIn({ profile, onProfileUpdate }) {
     finally { setLoading(false); }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm(`确定删除 ${form.date} 的打卡记录？`)) return;
+    setLoading(true);
+    try {
+      await deleteRecord(form.date);
+      setForm((prev) => ({
+        ...prev, morning_weight: '', sleep_bedtime: '', sleep_waketime: '', sleep_interruptions: 0, sleep_energy: null,
+        breakfast: '', lunch: '', dinner: '', snacks: '', exercise_type: '', exercise_duration: '', exercise_intensity: null,
+        exercise_steps: '', body_waist: '', body_knee: '', body_fatigue: null, body_hunger: null, body_bowel: '',
+        shooting_accuracy: '', stress_level: null, water_intake: '', self_diet_score: null, self_exercise_score: null,
+      }));
+      setHasExisting(false);
+      showToast('已删除');
+    } catch (err) { showToast(err.message, 'error'); }
+    finally { setLoading(false); }
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault(); setLoading(true);
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
     try {
       const fd = new FormData();
       fd.append('date', form.date);
@@ -178,7 +216,28 @@ export default function CheckIn({ profile, onProfileUpdate }) {
       </div>
 
       {mode === 'smart' && (
-        <SmartLog onFillForm={(data) => { setForm((prev) => ({ ...prev, ...data })); setMode('manual'); }} />
+        <SmartLog onFillForm={(data) => { setSmogFilled(data); }} />
+      )}
+
+      {smogFilled && (
+        <div className="card">
+          <div className="card-title">AI 提取数据预览</div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2 }}>
+            {smogFilled.morning_weight && <div>体重: <strong style={{ color: 'var(--text)' }}>{smogFilled.morning_weight}kg</strong></div>}
+            {smogFilled.breakfast && <div>早餐: {smogFilled.breakfast}</div>}
+            {smogFilled.lunch && <div>午餐: {smogFilled.lunch}</div>}
+            {smogFilled.dinner && <div>晚餐: {smogFilled.dinner}</div>}
+            {smogFilled.exercise_type && <div>运动: {smogFilled.exercise_type} {smogFilled.exercise_duration || 0}min</div>}
+            {smogFilled.exercise_steps > 0 && <div>步数: {smogFilled.exercise_steps}</div>}
+            {smogFilled.sleep_bedtime && <div>入睡: {smogFilled.sleep_bedtime}</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn btn-primary btn-sm" onClick={() => { setForm(prev => ({ ...prev, ...smogFilled })); setSmogFilled(null); setMode('manual'); }}>
+              确认并填写
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setSmogFilled(null)}>取消</button>
+          </div>
+        </div>
       )}
 
       {mode === 'manual' && (
@@ -198,7 +257,10 @@ export default function CheckIn({ profile, onProfileUpdate }) {
           <div className="card">
             <div className="form-row">
               <div className="form-group"><label className="form-label">日期</label><input type="date" className="form-input" value={form.date} onChange={(e) => handleFormChange('date', e.target.value)} /></div>
-              <div className="form-group"><label className="form-label">晨起体重 kg</label><input type="number" step="0.1" className="form-input" value={form.morning_weight} onChange={(e) => handleFormChange('morning_weight', e.target.value)} placeholder="kg" /></div>
+              <div className={`form-group${errors.morning_weight ? ' field-error' : ''}`}><label className="form-label">晨起体重 kg</label>
+                <input type="number" step="0.1" className="form-input" value={form.morning_weight} onChange={(e) => handleFormChange('morning_weight', e.target.value)} placeholder="kg" />
+                {errors.morning_weight && <span className="field-error-msg">{errors.morning_weight}</span>}
+              </div>
             </div>
             {lastWeight && form.morning_weight && parseFloat(form.morning_weight) > 0 && (
               <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -214,7 +276,10 @@ export default function CheckIn({ profile, onProfileUpdate }) {
           <div className="card">
             <div className="card-title">睡眠</div>
             <div className="form-row">
-              <div className="form-group"><label className="form-label">入睡</label><input type="time" className="form-input" value={form.sleep_bedtime} onChange={(e) => handleFormChange('sleep_bedtime', e.target.value)} /></div>
+              <div className={`form-group${errors.sleep_bedtime ? ' field-error' : ''}`}><label className="form-label">入睡</label>
+                <input type="time" className="form-input" value={form.sleep_bedtime} onChange={(e) => handleFormChange('sleep_bedtime', e.target.value)} />
+                {errors.sleep_bedtime && <span className="field-error-msg">{errors.sleep_bedtime}</span>}
+              </div>
               <div className="form-group"><label className="form-label">醒来</label><input type="time" className="form-input" value={form.sleep_waketime} onChange={(e) => handleFormChange('sleep_waketime', e.target.value)} /></div>
             </div>
             <div className="form-row" style={{ marginTop: 10 }}>
@@ -224,8 +289,8 @@ export default function CheckIn({ profile, onProfileUpdate }) {
           </div>
 
           {/* Diet */}
-          <div className="card">
-            <div className="card-title">饮食</div>
+          <div className={`card${errors.diet ? ' field-error' : ''}`}>
+            <div className="card-title">饮食 {errors.diet && <span className="field-error-msg">{errors.diet}</span>}</div>
             {['breakfast', 'lunch', 'dinner'].map((meal) => (
               <div className="form-group" key={meal}>
                 <label className="form-label">{meal === 'breakfast' ? '早餐' : meal === 'lunch' ? '午餐' : '晚餐'}</label>
@@ -245,7 +310,10 @@ export default function CheckIn({ profile, onProfileUpdate }) {
           {/* Exercise */}
           <div className="card">
             <div className="card-title">运动</div>
-            <div className="form-group"><label className="form-label">类型</label><input type="text" className="form-input" value={form.exercise_type} onChange={(e) => handleFormChange('exercise_type', e.target.value)} placeholder="跑步/投篮/力量..." /></div>
+            <div className={`form-group${errors.exercise_type ? ' field-error' : ''}`}><label className="form-label">类型</label>
+              <input type="text" className="form-input" value={form.exercise_type} onChange={(e) => handleFormChange('exercise_type', e.target.value)} placeholder="跑步/投篮/力量..." />
+              {errors.exercise_type && <span className="field-error-msg">{errors.exercise_type}</span>}
+            </div>
             <div className="form-row-3">
               <div className="form-group"><label className="form-label">分钟</label><input type="number" min="0" className="form-input" value={form.exercise_duration} onChange={(e) => handleFormChange('exercise_duration', e.target.value)} /></div>
               <div className="form-group"><label className="form-label">步数</label><input type="number" min="0" className="form-input" value={form.exercise_steps} onChange={(e) => handleFormChange('exercise_steps', e.target.value)} /></div>
@@ -270,9 +338,14 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             <div className="form-group" style={{ marginTop: 10 }}><label className="form-label">压力</label><ScoreInput value={form.stress_level} onChange={(v) => handleFormChange('stress_level', v)} /></div>
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginBottom: 16 }}>
-            {loading ? <span className="btn-loading"><span className="loading-spinner" />保存中</span> : '保存打卡'}
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginBottom: 8 }}>
+            {loading ? <span className="btn-loading"><span className="loading-spinner" />保存中</span> : hasExisting ? '更新打卡' : '保存打卡'}
           </button>
+          {hasExisting && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleDelete} disabled={loading} style={{ marginBottom: 16, width: '100%', color: 'var(--danger)', borderColor: 'rgba(255,69,58,0.2)' }}>
+              删除此打卡
+            </button>
+          )}
         </form>
       )}
     </div>

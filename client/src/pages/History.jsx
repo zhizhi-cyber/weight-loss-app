@@ -36,8 +36,8 @@ function Calendar({ records, year, month, onSelectDate }) {
     if (hasRecord) cls += ' has-record';
     if (wt && records.length > 1) {
       const prevDay = records.find((r) => r.date < dateStr && r.morning_weight);
-      if (prevDay && wt < prevDay.morning_weight) cls += ' good-day';
-      else if (prevDay && wt > prevDay.morning_weight) cls += ' bad-day';
+      if (prevDay && wt < prevDay.morning_weight - 0.5) cls += ' good-day';
+      else if (prevDay && wt > prevDay.morning_weight + 0.5) cls += ' bad-day';
     }
 
     cells.push(

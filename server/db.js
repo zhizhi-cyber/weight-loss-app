@@ -98,10 +98,22 @@ async function ensureTables() {
     'ALTER TABLE ai_analysis ADD COLUMN weight_cause TEXT',
     'ALTER TABLE ai_analysis ADD COLUMN highlights TEXT',
     'ALTER TABLE ai_analysis ADD COLUMN problems TEXT',
+    'ALTER TABLE profile ADD COLUMN health_notes TEXT',
+    'ALTER TABLE profile ADD COLUMN life_context TEXT',
+    'ALTER TABLE profile ADD COLUMN ideal_note TEXT',
   ];
   for (const sql of migrations) {
     try { await client.execute(sql); } catch (e) { /* 字段已存在则跳过 */ }
   }
+
+  // 数据修复：将旧的身高从米转换为厘米
+  try {
+    const profiles = await client.execute('SELECT height FROM profile WHERE id = 1 AND height < 3');
+    if (profiles.rows.length > 0) {
+      await client.execute('UPDATE profile SET height = height * 100 WHERE id = 1 AND height < 3');
+      console.log('已将身高从米转换为厘米');
+    }
+  } catch (e) { /* 忽略 */ }
 
   tablesReady = true;
 }
@@ -134,6 +146,8 @@ async function upsertProfile(profile) {
         current_phase = @current_phase, phase_start_date = @phase_start_date,
         phase_end_date = @phase_end_date, phase_start_weight = @phase_start_weight,
         phase_goal_weight = @phase_goal_weight,
+        body_fat = @body_fat, health_notes = @health_notes,
+        life_context = @life_context, ideal_note = @ideal_note,
         updated_at = datetime('now', 'localtime')
       WHERE id = 1`,
       args: profile,
@@ -141,9 +155,11 @@ async function upsertProfile(profile) {
   } else {
     await client.execute({
       sql: `INSERT INTO profile (id, age, height, starting_weight, goal_weight, deadline,
-        current_phase, phase_start_date, phase_end_date, phase_start_weight, phase_goal_weight)
+        current_phase, phase_start_date, phase_end_date, phase_start_weight, phase_goal_weight,
+        body_fat, health_notes, life_context, ideal_note)
       VALUES (1, @age, @height, @starting_weight, @goal_weight, @deadline,
-        @current_phase, @phase_start_date, @phase_end_date, @phase_start_weight, @phase_goal_weight)`,
+        @current_phase, @phase_start_date, @phase_end_date, @phase_start_weight, @phase_goal_weight,
+        @body_fat, @health_notes, @life_context, @ideal_note)`,
       args: profile,
     });
   }
@@ -305,6 +321,16 @@ async function upsertAnalysis(data) {
   }
 }
 
+async function deleteRecord(date) {
+  await ensureTables();
+  await client.execute({ sql: 'DELETE FROM daily_records WHERE date = ?', args: [date] });
+}
+
+async function deleteAnalysis(date) {
+  await ensureTables();
+  await client.execute({ sql: 'DELETE FROM ai_analysis WHERE date = ?', args: [date] });
+}
+
 module.exports = {
   getProfile,
   upsertProfile,
@@ -316,4 +342,6 @@ module.exports = {
   upsertBodyComp,
   getAnalysisByDate,
   upsertAnalysis,
+  deleteRecord,
+  deleteAnalysis,
 };

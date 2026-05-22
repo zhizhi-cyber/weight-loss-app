@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import CheckIn from './pages/CheckIn';
 import History from './pages/History';
 import Chat from './pages/Chat';
+import Settings from './pages/Settings';
 import { getProfile } from './api';
 
 class ErrorBoundary extends Component {
@@ -49,9 +50,17 @@ export default function App() {
           </svg>
           <h1>身体管理</h1>
         </div>
-        {profile && (
-          <span className="header-goal">{profile.starting_weight} → {profile.goal_weight}kg</span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {profile && (
+            <span className="header-goal">{profile.starting_weight} → {profile.goal_weight}kg</span>
+          )}
+          <NavLink to="/settings" className="header-gear" title="设置">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="1.5" fill="none">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+          </NavLink>
+        </div>
       </header>
 
       <main className="app-main">
@@ -61,6 +70,7 @@ export default function App() {
             <Route path="/checkin" element={<CheckIn profile={profile} onProfileUpdate={setProfile} />} />
             <Route path="/history" element={<History profile={profile} />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/settings" element={<Settings profile={profile} onProfileUpdate={setProfile} />} />
           </Routes>
         </ErrorBoundary>
       </main>

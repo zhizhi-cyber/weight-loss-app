@@ -47,3 +47,7 @@ export const getAnalysis = (date) => request(`/ai/${date}`);
 // 提交体脂秤数据
 export const submitBodyComp = (data) =>
   request('/records/bodycomp', { method: 'POST', body: JSON.stringify(data) });
+
+// 删除打卡记录
+export const deleteRecord = (date) =>
+  request(`/records/${date}`, { method: 'DELETE' });

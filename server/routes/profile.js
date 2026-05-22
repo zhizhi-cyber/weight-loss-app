@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
 // 创建或更新用户档案
 router.post('/', async (req, res) => {
   try {
-    const { age, height, starting_weight, goal_weight, deadline } = req.body;
+    const { age, height, starting_weight, goal_weight, deadline, body_fat, health_notes, life_context, ideal_note } = req.body;
 
     // 必填字段校验
     if (!age || !height || !starting_weight || !goal_weight || !deadline) {
@@ -63,7 +63,7 @@ router.post('/', async (req, res) => {
 
     const profile = {
       age: ageNum,
-      height: heightNum / 100,
+      height: heightNum,
       starting_weight: startNum,
       goal_weight: goalNum,
       deadline,
@@ -72,6 +72,10 @@ router.post('/', async (req, res) => {
       phase_end_date: phaseEndStr,
       phase_start_weight: startNum,
       phase_goal_weight: Math.round(phaseGoal * 10) / 10,
+      body_fat: body_fat ? parseFloat(body_fat) : null,
+      health_notes: health_notes || null,
+      life_context: life_context || null,
+      ideal_note: ideal_note || null,
     };
 
     await db.upsertProfile(profile);

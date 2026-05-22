@@ -98,11 +98,12 @@ router.post('/analyze/:date', async (req, res) => {
       problems: parsed.problems,
     });
 
-    // 自动检查：如果当前体重已达到或低于阶段目标，自动推进到下一阶段
+    // 自动检查：连续2天低于阶段目标才推进
     let phaseUpdated = false;
-    const currentWeight = record.morning_weight || profile.starting_weight;
     const phaseGoal = profile.phase_goal_weight || profile.goal_weight;
-    if (currentWeight <= phaseGoal && currentWeight > profile.goal_weight) {
+    const consecutiveUnder = currentWeight <= phaseGoal && recentRecords.length >= 1
+      && recentRecords[0].morning_weight && recentRecords[0].morning_weight <= phaseGoal;
+    if (consecutiveUnder && currentWeight > profile.goal_weight) {
       const weeklyRate = 0.45;
       const nextPhaseStart = new Date().toISOString().split('T')[0];
       const nextPhaseEndDate = new Date(Date.now() + 30 * 86400000);
@@ -114,6 +115,10 @@ router.post('/analyze/:date', async (req, res) => {
         starting_weight: profile.starting_weight,
         goal_weight: profile.goal_weight,
         deadline: profile.deadline,
+        body_fat: profile.body_fat,
+        health_notes: profile.health_notes,
+        life_context: profile.life_context,
+        ideal_note: profile.ideal_note,
         current_phase: (profile.current_phase || 1) + 1,
         phase_start_date: nextPhaseStart,
         phase_end_date: nextPhaseEnd,
@@ -123,7 +128,8 @@ router.post('/analyze/:date', async (req, res) => {
       phaseUpdated = true;
     }
 
-    const bmr = calcBMR(profile);
+    const currentWeight = record.morning_weight || profile.starting_weight;
+    const bmr = calcBMR(currentWeight, Math.round(profile.height), profile.age);
     const tdee = calcTDEE(bmr, record.exercise_steps || 0, record.exercise_duration || 0, record.exercise_intensity || 0);
     const saved = await db.getAnalysisByDate(date);
     res.json({ success: true, analysis: saved, metabolism: { bmr, tdee }, phaseUpdated });
@@ -259,7 +265,13 @@ router.post('/smart-log', async (req, res) => {
     }
 
     const data = await response.json();
-    const result = JSON.parse(data.choices[0].message.content);
+    let result;
+    try {
+      result = JSON.parse(data.choices[0].message.content);
+    } catch (parseErr) {
+      console.error('AI 返回非JSON格式:', data.choices[0].message.content.slice(0, 200));
+      return res.status(500).json({ error: 'AI 返回格式异常，请重试或缩短输入内容' });
+    }
 
     console.log('智能录入成功');
     res.json({ success: true, ...result });

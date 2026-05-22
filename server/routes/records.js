@@ -128,4 +128,19 @@ router.post('/bodycomp', async (req, res) => {
   }
 });
 
+// 删除某日打卡记录
+router.delete('/:date', async (req, res) => {
+  try {
+    const { date } = req.params;
+    const existing = await db.getRecordByDate(date);
+    if (!existing) return res.status(404).json({ error: '记录不存在' });
+    await db.deleteRecord(date);
+    await db.deleteAnalysis(date);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('删除记录失败:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
