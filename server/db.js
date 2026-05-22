@@ -85,6 +85,19 @@ async function ensureTables() {
   for (const sql of statements) {
     await client.execute(sql);
   }
+
+  // 增量迁移：添加体脂率等新字段
+  const migrations = [
+    'ALTER TABLE profile ADD COLUMN body_fat REAL',
+    'ALTER TABLE profile ADD COLUMN gender TEXT DEFAULT "male"',
+    'ALTER TABLE daily_records ADD COLUMN shooting_accuracy INTEGER',
+    'ALTER TABLE daily_records ADD COLUMN stress_level INTEGER CHECK(stress_level BETWEEN 1 AND 10)',
+    'ALTER TABLE daily_records ADD COLUMN water_intake REAL',
+  ];
+  for (const sql of migrations) {
+    try { await client.execute(sql); } catch (e) { /* 字段已存在则跳过 */ }
+  }
+
   tablesReady = true;
 }
 
@@ -158,7 +171,8 @@ async function upsertRecord(record) {
         lunch_photo = @lunch_photo, dinner_photo = @dinner_photo,
         exercise_type = @exercise_type, exercise_duration = @exercise_duration,
         exercise_intensity = @exercise_intensity, exercise_steps = @exercise_steps,
-        body_waist = @body_waist, body_knee = @body_knee,
+        shooting_accuracy = @shooting_accuracy, stress_level = @stress_level,
+        water_intake = @water_intake, body_waist = @body_waist, body_knee = @body_knee,
         body_fatigue = @body_fatigue, body_hunger = @body_hunger,
         body_bowel = @body_bowel, self_diet_score = @self_diet_score,
         self_exercise_score = @self_exercise_score
@@ -170,13 +184,15 @@ async function upsertRecord(record) {
       sql: `INSERT INTO daily_records (date, morning_weight, sleep_bedtime, sleep_waketime,
         sleep_interruptions, sleep_energy, breakfast, lunch, dinner, snacks,
         breakfast_photo, lunch_photo, dinner_photo, exercise_type, exercise_duration,
-        exercise_intensity, exercise_steps, body_waist, body_knee, body_fatigue,
-        body_hunger, body_bowel, self_diet_score, self_exercise_score)
+        exercise_intensity, exercise_steps, shooting_accuracy, stress_level,
+        water_intake, body_waist, body_knee, body_fatigue, body_hunger, body_bowel,
+        self_diet_score, self_exercise_score)
       VALUES (@date, @morning_weight, @sleep_bedtime, @sleep_waketime,
         @sleep_interruptions, @sleep_energy, @breakfast, @lunch, @dinner, @snacks,
         @breakfast_photo, @lunch_photo, @dinner_photo, @exercise_type, @exercise_duration,
-        @exercise_intensity, @exercise_steps, @body_waist, @body_knee, @body_fatigue,
-        @body_hunger, @body_bowel, @self_diet_score, @self_exercise_score)`,
+        @exercise_intensity, @exercise_steps, @shooting_accuracy, @stress_level,
+        @water_intake, @body_waist, @body_knee, @body_fatigue, @body_hunger, @body_bowel,
+        @self_diet_score, @self_exercise_score)`,
       args: record,
     });
   }

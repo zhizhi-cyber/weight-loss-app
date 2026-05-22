@@ -101,6 +101,9 @@ export default function CheckIn({ profile, onProfileUpdate }) {
     body_fatigue: null,
     body_hunger: null,
     body_bowel: '',
+    shooting_accuracy: '',
+    stress_level: null,
+    water_intake: '',
     self_diet_score: null,
     self_exercise_score: null,
   });
@@ -181,6 +184,9 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             body_fatigue: r.body_fatigue ?? null,
             body_hunger: r.body_hunger ?? null,
             body_bowel: r.body_bowel ?? '',
+            shooting_accuracy: r.shooting_accuracy ?? '',
+            stress_level: r.stress_level ?? null,
+            water_intake: r.water_intake ?? '',
             self_diet_score: r.self_diet_score ?? null,
             self_exercise_score: r.self_exercise_score ?? null,
           }));
@@ -201,6 +207,7 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             exercise_type: '', exercise_duration: '', exercise_intensity: null,
             exercise_steps: '', body_waist: '', body_knee: '',
             body_fatigue: null, body_hunger: null, body_bowel: '',
+            shooting_accuracy: '', stress_level: null, water_intake: '',
             self_diet_score: null, self_exercise_score: null,
           }));
           setPhotos({ breakfast_photo: null, lunch_photo: null, dinner_photo: null });
@@ -268,6 +275,9 @@ export default function CheckIn({ profile, onProfileUpdate }) {
       if (form.body_fatigue) fd.append('body_fatigue', form.body_fatigue);
       if (form.body_hunger) fd.append('body_hunger', form.body_hunger);
       if (form.body_bowel) fd.append('body_bowel', form.body_bowel);
+      if (form.shooting_accuracy !== '') fd.append('shooting_accuracy', form.shooting_accuracy);
+      if (form.stress_level) fd.append('stress_level', form.stress_level);
+      if (form.water_intake !== '') fd.append('water_intake', form.water_intake);
       if (form.self_diet_score) fd.append('self_diet_score', form.self_diet_score);
       if (form.self_exercise_score) fd.append('self_exercise_score', form.self_exercise_score);
 
@@ -514,6 +524,25 @@ export default function CheckIn({ profile, onProfileUpdate }) {
             <input type="text" className="form-input" value={form.body_bowel} onChange={(e) => handleFormChange('body_bowel', e.target.value)} placeholder="正常/便秘/腹泻..." />
           </div>
         </CollapsibleCard>
+
+        {/* 饮水与压力 */}
+        <div className="card">
+          <div className="card-title">饮水与状态</div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">饮水量（升）</label>
+              <input type="number" step="0.1" className="form-input" value={form.water_intake} onChange={(e) => handleFormChange('water_intake', e.target.value)} placeholder="例：1.5" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">投篮命中率（%）</label>
+              <input type="number" min="0" max="100" className="form-input" value={form.shooting_accuracy} onChange={(e) => handleFormChange('shooting_accuracy', e.target.value)} placeholder="例：45" />
+            </div>
+          </div>
+          <div className="form-group" style={{ marginTop: 8 }}>
+            <label className="form-label">压力水平</label>
+            <RatingDots value={form.stress_level} onChange={(v) => handleFormChange('stress_level', v)} />
+          </div>
+        </div>
 
         {/* 自我评价 */}
         <CollapsibleCard title="今日自评" section="self" collapsed={collapsed} onToggle={toggleSection}>

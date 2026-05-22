@@ -66,6 +66,9 @@ export default function SmartLog({ onFillForm }) {
       body_fatigue: e.body_fatigue,
       body_hunger: e.body_hunger,
       body_bowel: e.body_bowel ?? '',
+      shooting_accuracy: e.shooting_accuracy ?? '',
+      stress_level: e.stress_level,
+      water_intake: e.water_intake ?? '',
       self_diet_score: e.self_diet_score,
       self_exercise_score: e.self_exercise_score,
     });

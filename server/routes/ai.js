@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { buildCoachPrompt } = require('../prompts/coach');
+const { buildCoachPrompt, calcBMR, calcTDEE } = require('../prompts/coach');
 
 async function callDeepSeek(systemPrompt, userMessage) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
@@ -45,11 +45,16 @@ function parseAIResponse(rawText) {
   };
 
   return {
-    data_summary: extractSection('数据总结'),
+    data_summary: extractSection('今日总结'),
+    calorie_bill: extractSection('热量账单'),
+    nutrition: extractSection('营养结构'),
+    weight_cause: extractSection('体重变化原因分析'),
     total_goal_json: extractSection('总目标进度'),
     phase_goal_json: extractSection('阶段目标进度'),
-    judgment: extractSection('问题判断'),
-    suggestions: extractSection('明日建议'),
+    highlights: extractSection('成长亮点'),
+    problems: extractSection('问题行为'),
+    suggestions: extractSection('明日最关键调整'),
+    judgment: extractSection('体重变化原因分析'), // 兼容旧字段
   };
 }
 
@@ -88,8 +93,10 @@ router.post('/analyze/:date', async (req, res) => {
       suggestions: parsed.suggestions,
     });
 
+    const bmr = calcBMR(profile);
+    const tdee = calcTDEE(bmr, record.exercise_steps || 0, record.exercise_duration || 0, record.exercise_intensity || 0);
     const saved = await db.getAnalysisByDate(date);
-    res.json({ success: true, analysis: saved });
+    res.json({ success: true, analysis: saved, metabolism: { bmr, tdee } });
   } catch (err) {
     console.error('AI 分析失败:', err.message, err.cause || '', err.stack || '');
     res.status(500).json({ error: err.message, detail: err.cause?.message || String(err) });
@@ -141,6 +148,9 @@ router.post('/smart-log', async (req, res) => {
     "body_fatigue": 1-10或null,
     "body_hunger": 1-10或null,
     "body_bowel": "文字"或"",
+    "shooting_accuracy": 数字或null,
+    "stress_level": 1-10或null,
+    "water_intake": 升数或null,
     "self_diet_score": 1-10或null,
     "self_exercise_score": 1-10或null,
     "total_kcal_estimate": 估算总热量数字或null

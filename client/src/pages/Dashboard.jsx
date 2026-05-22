@@ -205,15 +205,33 @@ export default function Dashboard({ profile }) {
         </div>
       )}
 
-      {/* AI 教练分析 */}
+      {/* AI 教练完整复盘 */}
       <div className="card" style={{ marginTop: 14 }}>
-        <div className="card-title">AI 教练</div>
+        <div className="card-title">🧑‍🏫 AI 教练每日复盘</div>
         {analysis ? (
           <div className="ai-report">
             {analysis.data_summary && (
               <div className="ai-section">
-                <h4>📋 数据总结</h4>
+                <h4>📋 今日总结</h4>
                 <p>{analysis.data_summary}</p>
+              </div>
+            )}
+            {analysis.calorie_bill && (
+              <div className="ai-section">
+                <h4>📊 热量账单</h4>
+                <p>{analysis.calorie_bill}</p>
+              </div>
+            )}
+            {analysis.nutrition && (
+              <div className="ai-section">
+                <h4>🥗 营养结构</h4>
+                <p>{analysis.nutrition}</p>
+              </div>
+            )}
+            {analysis.weight_cause && (
+              <div className="ai-section">
+                <h4>⚖️ 体重变化分析</h4>
+                <p>{analysis.weight_cause}</p>
               </div>
             )}
             {analysis.total_goal_json && (
@@ -224,32 +242,38 @@ export default function Dashboard({ profile }) {
             )}
             {analysis.phase_goal_json && (
               <div className="ai-section">
-                <h4>📊 阶段目标进度</h4>
+                <h4>📈 阶段目标进度</h4>
                 <p>{analysis.phase_goal_json}</p>
               </div>
             )}
-            {analysis.judgment && (
+            {analysis.highlights && (
               <div className="ai-section">
-                <h4>🔍 问题判断</h4>
-                <p>{analysis.judgment}</p>
+                <h4>⭐ 成长亮点</h4>
+                <p>{analysis.highlights}</p>
+              </div>
+            )}
+            {analysis.problems && (
+              <div className="ai-section">
+                <h4>⚠️ 问题行为</h4>
+                <p>{analysis.problems}</p>
               </div>
             )}
             {analysis.suggestions && (
               <div className="ai-section">
-                <h4>💡 明日建议</h4>
+                <h4>📌 明日最关键调整</h4>
                 <p>{analysis.suggestions}</p>
               </div>
             )}
           </div>
         ) : data?.record ? (
           <div className="ai-empty">
-            <p style={{ marginBottom: 12 }}>还没有今天的 AI 分析</p>
+            <p style={{ marginBottom: 12 }}>还没有今天的 AI 复盘</p>
             <button className="btn btn-secondary" onClick={handleGenerateAI} disabled={loadingAI}>
-              {loadingAI ? <span className="btn-loading"><span className="loading-spinner" />分析中...</span> : '生成 AI 教练分析'}
+              {loadingAI ? <span className="btn-loading"><span className="loading-spinner" />生成 AI 教练复盘...</span> : '🤖 生成 AI 教练复盘'}
             </button>
           </div>
         ) : (
-          <div className="ai-empty"><p>打卡后即可生成 AI 教练分析</p></div>
+          <div className="ai-empty"><p>打卡后即可生成 AI 教练复盘</p></div>
         )}
       </div>
     </div>
