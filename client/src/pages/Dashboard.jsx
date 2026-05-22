@@ -83,6 +83,7 @@ export default function Dashboard({ profile }) {
   const [loadingAI, setLoadingAI] = useState(false);
   const [loading, setLoading] = useState(true);
   const [metabolism, setMetabolism] = useState(null);
+  const [selectedPhase, setSelectedPhase] = useState(null);
 
   const loadData = useCallback(() => {
     getTodayRecord().then((d) => { setData(d); setAnalysis(d.analysis); }).catch(console.error).finally(() => setLoading(false));
@@ -207,19 +208,19 @@ export default function Dashboard({ profile }) {
         <div className="stat-grid">
           <div className="stat-item">
             <div className="stat-value accent">{data.record.exercise_type || '—'}</div>
-            <div className="stat-label">运动</div>
+            <div className="stat-label">运动类型</div>
           </div>
           <div className="stat-item">
-            <div className="stat-value accent">{data.record.exercise_steps > 0 ? (data.record.exercise_steps / 1000).toFixed(1) + 'k' : '—'}</div>
+            <div className="stat-value accent">{data.record.exercise_steps > 0 ? data.record.exercise_steps.toLocaleString() : '—'}</div>
             <div className="stat-label">步数</div>
           </div>
           <div className="stat-item">
             <div className="stat-value">{data.record.self_diet_score ?? '—'}</div>
-            <div className="stat-label">饮食 /10</div>
+            <div className="stat-label">饮食自评</div>
           </div>
           <div className="stat-item">
             <div className="stat-value">{data.record.self_exercise_score ?? '—'}</div>
-            <div className="stat-label">运动 /10</div>
+            <div className="stat-label">运动自评</div>
           </div>
         </div>
       )}
@@ -227,28 +228,37 @@ export default function Dashboard({ profile }) {
       {/* 阶段规划 */}
       <div className="card" style={{ marginTop: 12 }}>
         <div className="card-title">阶段规划</div>
-        <div style={{ display: 'flex', gap: 0, overflow: 'hidden', borderRadius: 'var(--radius-sm)', border: '0.5px solid var(--border)' }}>
+        <div className="phase-roadmap">
           {phases.map((ph, i) => (
-            <div key={ph.num} style={{
-              flex: 1,
-              textAlign: 'center',
-              padding: '10px 4px',
-              background: ph.isCurrent ? 'rgba(164,249,98,0.08)' : 'transparent',
-              borderRight: i < phases.length - 1 ? '0.5px solid var(--border)' : 'none',
-              minWidth: 0,
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: ph.isCurrent ? 'var(--accent)' : 'var(--text-tertiary)' }}>
-                {ph.isCurrent ? '●' : ''} P{ph.num}
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: ph.isCurrent ? 'var(--text)' : 'var(--text-secondary)', marginTop: 2 }}>
-                {ph.target}
-              </div>
-              <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 1 }}>
-                {ph.end.slice(5)}
-              </div>
+            <div key={ph.num} className={`phase-chip${ph.isCurrent ? ' current' : ''}`}
+              onClick={() => setSelectedPhase(selectedPhase?.num === ph.num ? null : ph)}>
+              <div className="phase-chip-num">P{ph.num}</div>
+              <div className="phase-chip-weight">{ph.target}kg</div>
+              <div className="phase-chip-date">{ph.start.slice(2, 7)}~{ph.end.slice(2, 7)}</div>
+              {ph.isCurrent && <div className="phase-chip-dot" />}
             </div>
           ))}
         </div>
+        {selectedPhase && (
+          <div className="phase-detail">
+            <div className="phase-detail-row">
+              <span>阶段 {selectedPhase.num}</span>
+              <span style={{ color: 'var(--accent)' }}>{selectedPhase.isCurrent ? '进行中' : ''}</span>
+            </div>
+            <div className="phase-detail-row">
+              <span>起始体重</span><span style={{ fontWeight: 700 }}>{selectedPhase.startWeight}kg</span>
+            </div>
+            <div className="phase-detail-row">
+              <span>目标体重</span><span style={{ fontWeight: 700, color: 'var(--accent)' }}>{selectedPhase.target}kg</span>
+            </div>
+            <div className="phase-detail-row">
+              <span>时间</span><span>{selectedPhase.start} → {selectedPhase.end}</span>
+            </div>
+            <div className="phase-detail-row">
+              <span>预计减重</span><span style={{ fontWeight: 700 }}>{(selectedPhase.startWeight - selectedPhase.target).toFixed(1)}kg</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 代谢数据 */}

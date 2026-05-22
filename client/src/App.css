@@ -47,10 +47,20 @@ body {
   align-items: center;
 }
 
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-logo {
+  flex-shrink: 0;
+}
+
 .app-header h1 {
-  font-size: 28px;
-  font-weight: 900;
-  letter-spacing: -0.5px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
   color: var(--text);
 }
 
@@ -608,6 +618,207 @@ body {
   color: #000;
 }
 
+/* ========== Phase Roadmap ========== */
+.phase-roadmap {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.phase-roadmap::-webkit-scrollbar { display: none; }
+
+.phase-chip {
+  flex-shrink: 0;
+  width: 62px;
+  text-align: center;
+  padding: 10px 4px;
+  border-radius: var(--radius-xs);
+  border: 0.5px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  background: transparent;
+}
+.phase-chip:hover { border-color: var(--accent); background: rgba(164, 249, 98, 0.04); }
+.phase-chip.current {
+  background: rgba(164, 249, 98, 0.08);
+  border-color: rgba(164, 249, 98, 0.3);
+}
+.phase-chip-num {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--text-secondary);
+}
+.phase-chip.current .phase-chip-num { color: var(--accent); }
+.phase-chip-weight {
+  font-size: 14px;
+  font-weight: 800;
+  margin-top: 4px;
+  letter-spacing: -0.3px;
+}
+.phase-chip.current .phase-chip-weight { color: var(--text); }
+.phase-chip-date {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+.phase-chip-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin: 6px auto 0;
+}
+
+.phase-detail {
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--card-hover);
+  border-radius: var(--radius-xs);
+  border: 0.5px solid var(--border);
+}
+.phase-detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 5px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.phase-detail-row:last-child { border-bottom: none; }
+
+/* ========== Chat ========== */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 180px);
+}
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+.chat-msg {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.chat-msg.user { align-items: flex-end; }
+.chat-msg.assistant { align-items: flex-start; }
+.chat-msg-bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.chat-msg.user .chat-msg-bubble {
+  background: var(--accent);
+  color: #000;
+  border-bottom-right-radius: 6px;
+}
+.chat-msg.assistant .chat-msg-bubble {
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-bottom-left-radius: 6px;
+}
+.chat-msg-time {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--border);
+}
+.chat-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  font-size: 15px;
+  background: var(--card);
+  color: var(--text);
+  outline: none;
+}
+.chat-input:focus { border-color: var(--accent); }
+.chat-send-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #000;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chat-send-btn:disabled {
+  background: var(--border);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+.chat-suggestions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.chat-suggestion-chip {
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border);
+  background: var(--card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.chat-suggestion-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ========== Archived Review (History day detail) ========== */
+.day-detail-panel {
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--card-hover);
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border);
+}
+.day-detail-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  background: var(--card);
+  border-radius: var(--radius-xs);
+  padding: 2px;
+}
+.day-detail-tab {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+.day-detail-tab.active {
+  background: var(--accent);
+  color: #000;
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 480px) {
   .app-main { padding: 6px 12px 100px; }
@@ -616,4 +827,6 @@ body {
   .stat-grid { gap: 6px; }
   .rating-dot { width: 26px; height: 26px; font-size: 11px; }
   .rating { gap: 3px; }
+  .phase-chip { width: 56px; padding: 8px 3px; }
+  .phase-chip-weight { font-size: 12px; }
 }

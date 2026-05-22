@@ -3,6 +3,7 @@ import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import CheckIn from './pages/CheckIn';
 import History from './pages/History';
+import Chat from './pages/Chat';
 import { getProfile } from './api';
 
 class ErrorBoundary extends Component {
@@ -40,7 +41,14 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>身体管理</h1>
+        <div className="header-brand">
+          <svg className="header-logo" viewBox="0 0 32 32" width="28" height="28" fill="none">
+            <circle cx="16" cy="16" r="14" stroke="#A4F962" strokeWidth="2" />
+            <path d="M10 18 L14 14 L17 17 L22 10" stroke="#A4F962" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="22" cy="10" r="2" fill="#A4F962" />
+          </svg>
+          <h1>身体管理</h1>
+        </div>
         {profile && (
           <span className="header-goal">{profile.starting_weight} → {profile.goal_weight}kg</span>
         )}
@@ -52,6 +60,7 @@ export default function App() {
             <Route path="/" element={<Dashboard profile={profile} />} />
             <Route path="/checkin" element={<CheckIn profile={profile} onProfileUpdate={setProfile} />} />
             <Route path="/history" element={<History profile={profile} />} />
+            <Route path="/chat" element={<Chat />} />
           </Routes>
         </ErrorBoundary>
       </main>
@@ -68,6 +77,10 @@ export default function App() {
         <NavLink to="/history" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
           <span className="nav-icon">◷</span>
           <span className="nav-label">历史</span>
+        </NavLink>
+        <NavLink to="/chat" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+          <span className="nav-icon">?</span>
+          <span className="nav-label">问AI</span>
         </NavLink>
       </nav>
     </div>

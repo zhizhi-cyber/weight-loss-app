@@ -93,6 +93,11 @@ async function ensureTables() {
     'ALTER TABLE daily_records ADD COLUMN shooting_accuracy INTEGER',
     'ALTER TABLE daily_records ADD COLUMN stress_level INTEGER CHECK(stress_level BETWEEN 1 AND 10)',
     'ALTER TABLE daily_records ADD COLUMN water_intake REAL',
+    'ALTER TABLE ai_analysis ADD COLUMN calorie_bill TEXT',
+    'ALTER TABLE ai_analysis ADD COLUMN nutrition TEXT',
+    'ALTER TABLE ai_analysis ADD COLUMN weight_cause TEXT',
+    'ALTER TABLE ai_analysis ADD COLUMN highlights TEXT',
+    'ALTER TABLE ai_analysis ADD COLUMN problems TEXT',
   ];
   for (const sql of migrations) {
     try { await client.execute(sql); } catch (e) { /* 字段已存在则跳过 */ }
@@ -283,13 +288,18 @@ async function upsertAnalysis(data) {
       sql: `UPDATE ai_analysis SET
         raw_response = @raw_response, data_summary = @data_summary,
         total_goal_json = @total_goal_json, phase_goal_json = @phase_goal_json,
-        judgment = @judgment, suggestions = @suggestions WHERE date = @date`,
+        judgment = @judgment, suggestions = @suggestions,
+        calorie_bill = @calorie_bill, nutrition = @nutrition,
+        weight_cause = @weight_cause, highlights = @highlights,
+        problems = @problems WHERE date = @date`,
       args: data,
     });
   } else {
     await client.execute({
-      sql: `INSERT INTO ai_analysis (date, raw_response, data_summary, total_goal_json, phase_goal_json, judgment, suggestions)
-      VALUES (@date, @raw_response, @data_summary, @total_goal_json, @phase_goal_json, @judgment, @suggestions)`,
+      sql: `INSERT INTO ai_analysis (date, raw_response, data_summary, total_goal_json, phase_goal_json, judgment, suggestions,
+        calorie_bill, nutrition, weight_cause, highlights, problems)
+      VALUES (@date, @raw_response, @data_summary, @total_goal_json, @phase_goal_json, @judgment, @suggestions,
+        @calorie_bill, @nutrition, @weight_cause, @highlights, @problems)`,
       args: data,
     });
   }

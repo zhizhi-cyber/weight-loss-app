@@ -91,6 +91,11 @@ router.post('/analyze/:date', async (req, res) => {
       phase_goal_json: parsed.phase_goal_json,
       judgment: parsed.judgment,
       suggestions: parsed.suggestions,
+      calorie_bill: parsed.calorie_bill,
+      nutrition: parsed.nutrition,
+      weight_cause: parsed.weight_cause,
+      highlights: parsed.highlights,
+      problems: parsed.problems,
     });
 
     const bmr = calcBMR(profile);
@@ -243,6 +248,69 @@ router.post('/smart-log', async (req, res) => {
 router.get('/:date', async (req, res) => {
   const analysis = await db.getAnalysisByDate(req.params.date);
   res.json({ analysis: analysis || null });
+});
+
+// AI 对话：随时问 AI 教练问题
+router.post('/chat', async (req, res) => {
+  try {
+    const { message, history = [] } = req.body;
+    if (!message) return res.status(400).json({ error: '请输入问题' });
+
+    const profile = await db.getProfile();
+    const todayRecord = await db.getRecordByDate(new Date().toISOString().split('T')[0]);
+    const recentRecords = await db.getRecentRecords(7);
+
+    let contextPrompt = '你是一位顶级身体成长管理教练，帮助用户长期掌控身体。\n';
+    if (profile) {
+      contextPrompt += `\n## 用户档案
+- 男性，${profile.age}岁，${Math.round(profile.height * 100)}cm
+- 起始体重 ${profile.starting_weight}kg，目标 ${profile.goal_weight}kg
+- 截止日期 ${profile.deadline}
+- 有轻度腰肌劳损史\n`;
+    }
+    if (todayRecord) {
+      contextPrompt += `\n## 今日数据
+- 体重：${todayRecord.morning_weight || '未称'}kg
+- 饮食：早[${todayRecord.breakfast || '?'}] 午[${todayRecord.lunch || '?'}] 晚[${todayRecord.dinner || '?'}]
+- 运动：${todayRecord.exercise_type || '无'} ${todayRecord.exercise_duration || 0}分钟 ${todayRecord.exercise_steps || 0}步
+- 睡眠：${todayRecord.sleep_energy || '?'}/10 夜醒${todayRecord.sleep_interruptions || 0}次
+- 饮水：${todayRecord.water_intake || '?'}L\n`;
+    }
+    if (recentRecords.length > 0) {
+      contextPrompt += `\n最近几天体重趋势：${recentRecords.filter(r => r.morning_weight).slice(0, 7).map(r => `${r.date.slice(5)}:${r.morning_weight}kg`).join('，')}\n`;
+    }
+    contextPrompt += '\n规则：回答简洁实用（200字以内），基于用户实际数据。如果用户问"能不能吃"，分析热量和营养并给明确建议。如果用户分享进步，先肯定再给下一步建议。如果用户有疑问，基于科学和数据回答。绝不建议极端节食或每天跑10公里。注意腰部保护。';
+
+    const messages = [
+      { role: 'system', content: contextPrompt },
+      ...history.slice(-10).map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: message },
+    ];
+
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    const baseUrl = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
+    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages,
+        temperature: 0.6,
+        max_tokens: 600,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`DeepSeek API 调用失败: ${response.status} ${errText}`);
+    }
+
+    const data = await response.json();
+    res.json({ reply: data.choices[0].message.content });
+  } catch (err) {
+    console.error('AI 对话失败:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
