@@ -220,23 +220,16 @@ router.post('/smart-log', async (req, res) => {
 - 热量估算偏保守（宁可多算不要少算）
 - 对于投篮等技能类运动，给出具体可操作的优化建议`;
 
-    // Build user message (text + optional image)
-    const userContent = [];
-    if (text) {
-      userContent.push({ type: 'text', text: `请分析以下记录：\n\n${text}` });
-    }
-    if (image) {
-      userContent.push({
-        type: 'image_url',
-        image_url: { url: image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}` },
-      });
+    // Build user message (text + optional image note)
+    // deepseek-chat 不支持 image_url 多模态，图片仅以文字提示代替
+    let userMsg = text ? `请分析以下记录：\n\n${text}` : '请分析以下记录';
+    if (image && !text) {
+      userMsg += '\n\n[用户上传了一张照片，请根据上下文推断并给出建议，同时提示用户可补充文字描述以便更准确分析]';
     }
 
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userContent.length === 1 && userContent[0].type === 'text'
-        ? userContent[0].text
-        : userContent },
+      { role: 'user', content: userMsg },
     ];
 
     console.log('正在调用 DeepSeek 智能录入...');
@@ -317,15 +310,13 @@ ${profile.life_context ? '- ' + profile.life_context + '\n' : ''}`;
     if (recentRecords.length > 0) {
       contextPrompt += `\n最近几天体重趋势：${recentRecords.filter(r => r.morning_weight).slice(0, 7).map(r => `${r.date.slice(5)}:${r.morning_weight}kg`).join('，')}\n`;
     }
-    contextPrompt += '\n规则：回答简洁实用（200字以内），基于用户实际数据。如果用户发来食物照片，分析热量和营养并给出能不能吃、吃多少的建议。如果用户分享进步，先肯定再给下一步建议。绝不建议极端节食或每天跑10公里。注意腰部保护。';
+    contextPrompt += '\n规则：回答简洁实用（200字以内），基于用户实际数据。如果用户分享进步，先肯定再给下一步建议。绝不建议极端节食或每天跑10公里。注意腰部保护。用户可能会上传图片（如食物照片），但你无法直接看到图片内容——根据用户文字描述来回答即可，并在需要精确热量时建议用户去打卡页用AI智能录入拍照分析。';
 
-    // 构建 user message，支持图片
+    // 构建 user message（deepseek-chat 不支持 image_url，图片仅作文字提示）
     let userContent;
     if (image) {
-      userContent = [
-        { type: 'image_url', image_url: { url: image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}` } },
-      ];
-      if (message) userContent.push({ type: 'text', text: message });
+      const imgNote = '[用户上传了一张图片' + (message ? '，请根据文字描述回答' : '') + ']';
+      userContent = message ? `${imgNote}\n\n${message}` : imgNote;
     } else {
       userContent = message;
     }
