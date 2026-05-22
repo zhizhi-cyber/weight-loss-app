@@ -32,6 +32,33 @@ function calcProgress(profile) {
   };
 }
 
+function calcProjectedPhases(profile) {
+  // 按每周0.45kg减重速度投影未来阶段
+  const phases = [];
+  const weeklyRate = 0.45;
+  let currentWeight = profile.phase_start_weight || profile.starting_weight;
+  const phaseCount = Math.ceil((currentWeight - profile.goal_weight) / (weeklyRate * 4));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let phaseStart = new Date(profile.phase_start_date); phaseStart.setHours(0, 0, 0, 0);
+
+  for (let i = 1; i <= Math.min(phaseCount, 12); i++) {
+    const daysInPhase = i === 1 ? Math.ceil((new Date(profile.phase_end_date) - phaseStart) / (1000 * 60 * 60 * 24)) : 30;
+    const phaseEnd = new Date(phaseStart.getTime() + daysInPhase * 1000 * 60 * 60 * 24);
+    const phaseTarget = Math.max(profile.goal_weight, currentWeight - weeklyRate * 4);
+    phases.push({
+      num: i,
+      start: phaseStart.toISOString().split('T')[0],
+      end: phaseEnd.toISOString().split('T')[0],
+      startWeight: Math.round(currentWeight * 10) / 10,
+      target: Math.round(phaseTarget * 10) / 10,
+      isCurrent: i === (profile.current_phase || 1),
+    });
+    currentWeight = phaseTarget;
+    phaseStart = phaseEnd;
+  }
+  return phases;
+}
+
 function ProgressRing({ pct, size = 80, stroke = 5, color = 'var(--accent)' }) {
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
@@ -95,6 +122,7 @@ export default function Dashboard({ profile }) {
   const phaseLost = todayWeight ? (profile.phase_start_weight || p.start) - todayWeight : 0;
   const phaseProgress = p.phaseToLose > 0 ? (phaseLost / p.phaseToLose) * 100 : 0;
 
+  const phases = calcProjectedPhases(profile);
   const isGood = deviation !== null && deviation <= 0;
   const kgToGoal = toGoal ? toGoal.toFixed(1) : '—';
 
@@ -195,6 +223,33 @@ export default function Dashboard({ profile }) {
           </div>
         </div>
       )}
+
+      {/* 阶段规划 */}
+      <div className="card" style={{ marginTop: 12 }}>
+        <div className="card-title">阶段规划</div>
+        <div style={{ display: 'flex', gap: 0, overflow: 'hidden', borderRadius: 'var(--radius-sm)', border: '0.5px solid var(--border)' }}>
+          {phases.map((ph, i) => (
+            <div key={ph.num} style={{
+              flex: 1,
+              textAlign: 'center',
+              padding: '10px 4px',
+              background: ph.isCurrent ? 'rgba(164,249,98,0.08)' : 'transparent',
+              borderRight: i < phases.length - 1 ? '0.5px solid var(--border)' : 'none',
+              minWidth: 0,
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: ph.isCurrent ? 'var(--accent)' : 'var(--text-tertiary)' }}>
+                {ph.isCurrent ? '●' : ''} P{ph.num}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: ph.isCurrent ? 'var(--text)' : 'var(--text-secondary)', marginTop: 2 }}>
+                {ph.target}
+              </div>
+              <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 1 }}>
+                {ph.end.slice(5)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* 代谢数据 */}
       {metabolism && (

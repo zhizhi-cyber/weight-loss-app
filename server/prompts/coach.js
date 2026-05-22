@@ -70,7 +70,7 @@ function buildCoachPrompt(profile, todayRecord, recentRecords) {
 - 当前体重约${currentWeight}kg，体脂约${profile.body_fat || '?'}%
 - 有轻度腰肌劳损史、曾有轻度脂肪肝
 - 工作忙，有婴儿需夜间照顾，睡眠常被打断
-- 总目标：${goalWeight}kg（${deadline}），共减${totalToLose.toFixed(1)}kg
+- 总目标：${goalWeight}kg（${profile.deadline}），共减${totalToLose.toFixed(1)}kg
 - 更真实理想：85-90kg、15-18%体脂、体型更强壮
 - 用户喜欢真实、可执行、不极端的方案
 - 用户会毫无保留记录真实饮食（包括垃圾食品、暴食）
