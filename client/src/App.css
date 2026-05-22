@@ -33,11 +33,11 @@ body {
 .app {
   max-width: 480px;
   margin: 0 auto;
-  min-height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .app-header {
@@ -80,23 +80,19 @@ body {
 
 .app-main {
   flex: 1;
-  padding: 8px 16px 100px;
+  padding: 8px 16px 0;
+  overflow-y: auto;
 }
 
 /* ========== Bottom Nav ========== */
 .bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
+  flex-shrink: 0;
   display: flex;
   background: rgba(26, 26, 26, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 0.5px solid var(--border);
-  padding: 10px 0 28px;
+  padding: 10px 0 max(28px, env(safe-area-inset-bottom));
   z-index: 10;
 }
 
@@ -522,7 +518,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  height: 100dvh;
   font-size: 16px;
   color: var(--text-secondary);
 }
@@ -702,7 +698,7 @@ body {
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 180px);
+  height: 100%;
 }
 .chat-messages {
   flex: 1;
@@ -905,7 +901,7 @@ body {
 
 /* ========== Responsive ========== */
 @media (max-width: 480px) {
-  .app-main { padding: 6px 12px 100px; }
+  .app-main { padding: 6px 12px 0; }
   .card { padding: 16px; margin-bottom: 10px; }
   .hero-number { font-size: 48px; }
   .stat-grid { gap: 6px; }
