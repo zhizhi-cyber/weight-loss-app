@@ -2,13 +2,22 @@ const BASE = '/api';
 
 // 通用请求
 export async function request(url, options = {}) {
-  const res = await fetch(`${BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE}${url}`, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+  } catch (fetchErr) {
+    throw new Error('网络连接失败，请检查网络后重试');
+  }
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || '请求失败');
+    let errMsg = '';
+    try {
+      const body = await res.json();
+      errMsg = body.error || body.message || '';
+    } catch { /* ignore parse errors */ }
+    throw new Error(errMsg || `服务器错误 (${res.status})，请稍后重试`);
   }
   return res.json();
 }

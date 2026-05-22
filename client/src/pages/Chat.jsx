@@ -81,11 +81,22 @@ export default function Chat() {
       const withErr = [...newMessages, {
         role: 'assistant',
         content: '抱歉，出了点问题：' + err.message,
+        isError: true,
         time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       }];
       setMessages(withErr);
       saveMessages(withErr);
     } finally { setLoading(false); }
+  };
+
+  const retry = () => {
+    // 移除最后一条错误消息，重发上一条用户消息
+    const errIdx = messages.findLastIndex(m => m.isError);
+    if (errIdx < 0) return;
+    const userMsg = messages[errIdx - 1];
+    if (!userMsg || userMsg.role !== 'user') return;
+    setMessages(messages.slice(0, errIdx));
+    send(userMsg.content);
   };
 
   const handleKeyDown = (e) => {
@@ -120,7 +131,12 @@ export default function Chat() {
         {messages.map((m, i) => (
           <div key={i} className={`chat-msg ${m.role}`}>
             {m.image && <img src={m.image} className="chat-msg-img" alt="upload" />}
-            <div className="chat-msg-bubble">{m.content}</div>
+            <div className="chat-msg-bubble">
+              {m.content}
+              {m.isError && (
+                <button className="chat-retry-btn" onClick={retry}>重试</button>
+              )}
+            </div>
             <div className="chat-msg-time">{m.time}</div>
           </div>
         ))}
